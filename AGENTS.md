@@ -33,6 +33,27 @@
 
 ## 1. 选手域：上场怎么打
 
+### 三分钟上手（执行者只看这一节）
+
+在**仓库根目录**执行；你的名字由主控给（例：`deepseek-v4`），三个种子就是三个会话：
+
+```sh
+# 起第 1 局（返回第一条观察）
+node tools/session.mjs start --model deepseek-v4-s1 --seed-index 1
+
+# 每轮：看返回的观察 → 决定一个工具 → act 一次（= 一次真实调用，时间会前进）
+node tools/session.mjs act --session deepseek-v4-s1 '{"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}'
+
+# 随时看状态 / 收工
+node tools/session.mjs state --session deepseek-v4-s1
+node tools/session.mjs stop  --session deepseek-v4-s1
+```
+
+- 第 2、3 局同样起，换成 `-s2 / -s3` 和 `--seed-index 2 / 3`；**三个会话可并行**。
+- 每次 `act` 返回新观察 + `advanced`（本次推进多少分钟）。返回 `ended: true` 就是 14:00 收工了。
+- **你不需要评分**。跑完把目录留着，主控会做评分与裁判。
+- 想一次跑完（把策略写成代码）也可：`node tools/play.mjs --model <名> --policy <policy.mjs> --seeds 1,2,3`。
+
 你在一场 480 分钟（06:00–14:00）的外卖班次里跑单，目标是**班次净利最大**。
 
 ### 输入输出协议
@@ -81,37 +102,19 @@
 
 只有主控/运行者/评审需要读这节；如果你只是选手，跳到 §3。
 
-### 标准流程（3 轮 = 3 个种子，取均值 ± 极差）
+### 标准流程（裁判域）
 
-有两种驱动方式，**任选**：
-
-**A. 逐轮玩（像调用工具一样，推荐给 LLM 执行者）**——不用写 policy：
+执行者怎么玩见 §1（session 或 policy 都可以）。裁判域只做三件事：
 
 ```sh
-node tools/session.mjs start --model <名>-s1 --seed-index 1     # 起局，返回第一条观察
-node tools/session.mjs act --session <名>-s1 '{"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}'
-node tools/session.mjs state --session <名>-s1                  # 看当前观察
-node tools/session.mjs stop --session <名>-s1                   # 收工（等价 quit）
-```
+# 1) 评分（每个种子跑一次；核对承诺 + 写事实卡 + 追加榜单摘要）
+python src/scoring/score_run.py runs/<名>-s1 <名> --seed-index 1
 
-每次 `act` 就是一次真实工具调用，返回新观察，并带 `advanced`（本次推进了多少分钟）。
-三个种子 = 三个 session（模型名不同即可，可并行）。
-
-**B. 批量跑（写 policy，一条命令三局并发）**：
-
-```sh
-node tools/play.mjs --model <名> --policy <你的policy.mjs> --seeds 1,2,3 --score
-```
-
-它会并发起 3 局、写到 `runs/<名>-s1|s2|s3`，并顺手评分（A/B/C，不写榜）。
-然后：
-
-```sh
-# 1) 裁判素材包：打印 3 张事实卡 + 生成待填草稿
+# 2) 裁判素材包：打印 3 张事实卡 + 生成待填草稿
 python src/scoring/judge_pack.py --model <名> --print
 #    → 把 D1/D2/D3 填进 leaderboard/verdicts/<名>.draft.json（多位裁判就填多组）
 
-# 2) 出榜：核对承诺 → 回放核验 → 合成总分 → 写 leaderboard/scores.md
+# 3) 出榜：核对承诺 → 回放核验 → 合成总分 → 写 leaderboard/scores.md
 python src/scoring/finalize.py --model <名> \
     --runs runs/<名>-s1 runs/<名>-s2 runs/<名>-s3 \
     --seed-indexes 1,2,3 --d-file leaderboard/verdicts/<名>.draft.json
