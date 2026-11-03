@@ -58,6 +58,7 @@ const sim = new Simulator({ seed: SEED, duration: SC.duration_min ?? 480, mapSiz
 sim.setStatus('running');
 
 fs.mkdirSync(OUT, { recursive: true });
+fs.writeFileSync(path.join(OUT, 'trace.jsonl'), '');   // 每次运行清空轨迹，避免同一目录重跑时把两次记录追加到一起
 const tProcess = Date.now();
 const startWall = performance.now();
 let rounds = 0, arrivalBatches = 0, rejected = 0;
