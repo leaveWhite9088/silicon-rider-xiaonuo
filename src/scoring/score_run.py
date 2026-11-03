@@ -41,13 +41,14 @@ proto = json.loads((folder / "protocol.json").read_text(encoding="utf-8"))
 commit = (proto.get("scene") or {}).get("seed_commit")
 seed = a.seed
 if seed is None and a.seed_index is not None:
-    seeds_file = ROOT / "configs" / "seeds.json"
+    import os
+    seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
     if not seeds_file.exists():
-        print(f"缺少 {seeds_file}（预注册明文，由主控保管）")
+        print(f"找不到种子明文：{seeds_file}（由主控放置，或用环境变量 SR_SEEDS 指定）")
         sys.exit(1)
     table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
     if a.seed_index not in table:
-        print(f"预注册表里没有序号 {a.seed_index}")
+        print(f"种子表里没有序号 {a.seed_index}")
         sys.exit(1)
     seed = table[a.seed_index]
 seed_ok = None

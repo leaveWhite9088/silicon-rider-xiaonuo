@@ -13,8 +13,9 @@ const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ?
 const n = Number(arg('n', '3'));
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const secretPath = path.resolve(arg('out', path.join(ROOT, 'configs', 'seeds.json')));
-const commitPath = path.join(path.dirname(secretPath), 'seeds.commit.json');
+// 明文默认放在**仓库外**（<仓库>/../.sr-seeds/seeds.json），只把承诺写进 configs/
+const secretPath = path.resolve(arg('out', path.join(ROOT, '..', '.sr-seeds', 'seeds.json')));
+const commitPath = path.join(ROOT, 'configs', 'seeds.commit.json');
 
 if (fs.existsSync(secretPath) && !process.argv.includes('--force')) {
   console.error(`已存在 ${secretPath}：种子一经确定就不应更换（更换会导致成绩不可比）。`);

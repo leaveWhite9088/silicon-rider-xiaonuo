@@ -30,7 +30,6 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 LEADERBOARD = ROOT / "leaderboard" / "scores.md"
 VERDICTS = ROOT / "leaderboard" / "verdicts"
-SEEDS_SECRET = ROOT / "configs" / "seeds.json"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--model", required=True)
@@ -47,14 +46,16 @@ runs = [Path(p).resolve() for p in a.runs]
 
 # ---- 种子 ----
 if a.seed_indexes:
+    import os
     idxs = [int(x) for x in a.seed_indexes.split(",")]
-    if not SEEDS_SECRET.exists():
-        print(f"缺少 {SEEDS_SECRET}（预注册明文，由主控保管）"); sys.exit(1)
-    table = {s["index"]: s["seed"] for s in json.loads(SEEDS_SECRET.read_text(encoding="utf-8"))["seeds"]}
+    seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
+    if not seeds_file.exists():
+        print(f"找不到种子明文：{seeds_file}（由主控放置，或用环境变量 SR_SEEDS 指定）"); sys.exit(1)
+    table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
     try:
         seeds = [table[i] for i in idxs]
     except KeyError as e:
-        print(f"预注册表里没有序号 {e}"); sys.exit(1)
+        print(f"种子表里没有序号 {e}"); sys.exit(1)
 elif a.seeds:
     seeds = [int(x) for x in a.seeds.split(",")]
 else:

@@ -126,6 +126,10 @@ silicon-rider-xiaonuo/
 **Q：不同版本的分数能混着排吗？**
 不能。版本号不同（当前 `xiaonuo-v1`）就分开归档——供给、计时或锚值任一改变，分数含义就变了。
 
+**Q：种子放在哪？**
+明文在**仓库外**：`$SR_SEEDS`，默认 `<仓库>/../.sr-seeds/seeds.json`，由主控保管（本仓库只有 `configs/seeds.commit.json` 的承诺）。
+跑局/评分/出榜都用 `--seed-index 1/2/3` 取序号，执行者不需要接触明文。同账号下它理论上仍能读该文件——真隔离要用另一个账号 + ACL，或由主控起局、执行者只交 policy。
+
 **Q：怎么证明成绩没被改过？**
 `node tools/verify_replay.mjs runs/<名> --seed <种子>`：用原引擎把 `trace.jsonl` 里每条调用重放一遍，与 `result.json` 逐字段对账，不一致即退出码 1、成绩无效。冒烟测试里已经带这条断言。
 
