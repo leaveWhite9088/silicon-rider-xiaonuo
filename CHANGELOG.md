@@ -21,6 +21,13 @@
 - `tests/smoke.ps1` 增加回放断言：冒烟跑完必须回放一致。
 - `src/scoring/finalize.py`：出榜脚本——核对种子承诺、逐目录回放核验、把 A/B/C 与裁判 D 合成总分，
   写 `leaderboard/scores.md` 与 `leaderboard/verdicts/<模型>.json`（审计留档）。
+- `tools/harness.mjs`：**一句话开跑**——读观察 → 调 policy → 写一行调用；执行者只需写一个 policy 文件。
+- `examples/policy-greedy.mjs`：示例策略（贪心选单 + 低电换电），可直接改用。
+- `src/scoring/judge_pack.py`：裁判素材包（打印事实卡 + 生成待填草稿），配合 `finalize --d-file`。
+- **固定种子**：`configs/seeds.commit.json` 公开承诺；明文 `configs/seeds.json` 不进库、由主控保管。
+  起局/评分/出榜均可用 `--seed-index` / `--seed-indexes` 按序号取，执行者无需接触明文。
+- 工具返回数据新增 **`[result]`** 行（此前查询结果、移动耗时、结算金额都被吞掉）；
+  在途单字段与在库单对齐（`pickup`/`delivery`，保留 `pickupLocation`/`deliveryLocation` 兼容）。
 
 ### 规则
 

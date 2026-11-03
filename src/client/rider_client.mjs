@@ -72,9 +72,12 @@ function snap() {
            score: sim.getScoreCalculator().calculateMetrics() };
 }
 function printObs(s) {
-  // 已接单的 deadline 用引擎真实值（= 接单时刻 + 时限），不再用 createdAt+timeLimit 这个会误导人的值
-  const carried = (s.orders || []).map(o => ({ id: o.id, pickedUp: o.pickedUp, pickupLocation: o.pickupLocation,
-    deliveryLocation: o.deliveryLocation, deadline: o.deadline ?? (o.createdAt + o.timeLimit), timeLimit: o.timeLimit }));
+  // 已接单的 deadline 用引擎真实值（= 接单时刻 + 时限）
+  // 取送点同时给 `pickup/delivery`（推荐，与在库单一致）和 `pickupLocation/deliveryLocation`（兼容旧字段）
+  const carried = (s.orders || []).map(o => ({ id: o.id, pickedUp: o.pickedUp,
+    pickup: o.pickupLocation, delivery: o.deliveryLocation,
+    pickupLocation: o.pickupLocation, deliveryLocation: o.deliveryLocation,
+    deadline: o.deadline ?? (o.createdAt + o.timeLimit), timeLimit: o.timeLimit }));
   const open = (s.availableOrders || []).map(o => ({ id: o.id, fee: +o.deliveryFee.toFixed(2), dist: +o.distance.toFixed(1),
     pickup: o.pickupLocation, delivery: o.deliveryLocation, timeLimit: +o.timeLimit.toFixed(1),
     createdAt: +o.createdAt.toFixed(1), weight: +o.weight.toFixed(2),
@@ -184,6 +187,8 @@ for await (const line of rl) {
   const after = snap();
   wfile({ type: 'tool', round: rounds, t: Date.now(), call: { name, arguments: parameters }, response, before, after });
   console.log(`[${name}] success=${response.success}` + (response.success ? '' : ` error=${JSON.stringify(response.error || {}).slice(0, 120)}`));
+  // 工具返回的数据必须让模型看到（查询结果 / 移动耗时 / 结算金额），单列一行便于解析
+  if (response.success && response.data) console.log(`[result] ${JSON.stringify(response.data)}`);
   printObs(after);
   if (ARRIVAL === 'rounds' && rounds % ROUND_TICK === 0 && !after.ended) {
     const bIds = new Set(sim.getAvailableOrders().map(o => o.id));

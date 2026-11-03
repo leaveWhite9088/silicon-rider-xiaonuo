@@ -73,26 +73,20 @@ C  = 8.1 + 7.2 + 7.2                 = 22.50
 ## 5. 一次完整评测怎么走
 
 ```sh
-# 0) 预注册种子：承诺可公开，seeds.json 由主控保管（绝不入库、不进模型可达目录）
-node tools/gen_seeds.mjs --n 3 --out seeds.json
+# 种子已预注册：configs/seeds.commit.json 公开承诺，明文 configs/seeds.json 由主控保管（不进库）
 
-# 1) 跑一班：--t0 是"任务交给模型"的时刻，B2 从这一刻算
-pwsh scripts/run_session.ps1 -Model Demo-s1 -Seed <种子>
+# 1) 起一局：一条命令；policy 就是"会玩的机器人"
+node tools/harness.mjs --model Demo-s1 --seed-index 1 --policy examples/policy-greedy.mjs
 
-# 2) 评分：用 --seed 核对承诺（不匹配 = 成绩作废）
-python src/scoring/score_run.py runs/Demo-s1 Demo --seed <种子>
+# 2) 评分：按预注册序号核对承诺（不用手工传明文种子）
+python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1
 
-# 3) 三个种子汇总（均值 ± 极差）
-python src/scoring/aggregate.py --prefix runs/Demo
-
-# 4) 出榜：核对承诺 + 回放核验 + 合成总分（A+B+C+D）→ 写 leaderboard/scores.md
+# 3) 裁判素材包 → 填 D → 出榜（核对承诺 + 回放核验 + 合成总分 → 写 leaderboard/scores.md）
+python src/scoring/judge_pack.py --model Demo --print
 python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
+       --seed-indexes 1,2,3 --d-file leaderboard/verdicts/Demo.draft.json
 
-# 5) 生成/检查物理界与锚值（换种子必做）
-node tools/bounds.mjs --seed <种子>
-
-# 6) 自检
+# 4) 自检
 pwsh tests/smoke.ps1
 ```
 

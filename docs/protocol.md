@@ -39,11 +39,15 @@
 | | `swap_battery` | 换电（需在换电站） |
 | | `wait` | 原地等待 N 分钟（1–60，期间按 5 分钟一批生单） |
 
-每轮输出一行 JSON：
+- 每轮输出一行 JSON：
 
 ```json
 {"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}
 ```
+
+- **工具返回的数据单列一行** `[result] {...}`（查询结果、移动耗时、结算金额都在这里）；
+  轮次的观察仍是 `{"minute":...}` 那一行。两行一起看。
+- 在途单的取送点同时给 `pickup/delivery` 与 `pickupLocation/deliveryLocation`（等价），与在库单字段对齐。
 
 特殊命令：`status`（重打完整状态，不计轮数）、`quit`（提前收工结算）。
 
@@ -74,22 +78,17 @@
 ## 7. 运行
 
 ```sh
-# 预注册种子（承诺可公开；seeds.json 由主控保管）
-node tools/gen_seeds.mjs --n 3 --out seeds.json
-
-# 跑一班（--t0 = 任务发给模型的时刻，B2 从这一刻算起）
-node src/client/rider_client.mjs --model Demo --seed 12345 --t0 2026-11-03T18:00:00+08:00
+# 种子已预注册：--seed-index 取序号即可，执行者不需要接触明文
+node tools/harness.mjs --model Demo-s1 --seed-index 1 --policy examples/policy-greedy.mjs
 
 # 评分（核对承诺）
-python src/scoring/score_run.py runs/Demo Demo --seed 12345
+python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1
 
-# 多种子汇总
-python src/scoring/aggregate.py --prefix runs/Demo
-
-# 出榜：核对承诺 → 回放核验 → 合成总分（A+B+C+D）→ 写 leaderboard/scores.md
+# 裁判素材包 → 填 D → 出榜
+python src/scoring/judge_pack.py --model Demo --print
 python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
+       --seed-indexes 1,2,3 --d-file leaderboard/verdicts/Demo.draft.json
 
-# 换种子标定锚值
-node tools/bounds.mjs --seed 12345
+# 换批才需要重标锚值（本批固定种子，不换）
+node tools/bounds.mjs --seed-index 1
 ```

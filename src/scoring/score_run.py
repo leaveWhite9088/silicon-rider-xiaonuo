@@ -25,6 +25,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("folder")
 ap.add_argument("model")
 ap.add_argument("--seed", type=int, default=None)
+ap.add_argument("--seed-index", type=int, default=None, help="预注册序号（推荐：明文由脚本读取，人不接触）")
 ap.add_argument("--anchor", type=float, default=None)
 ap.add_argument("--no-record", action="store_true")
 a = ap.parse_args()
@@ -38,12 +39,23 @@ if a.anchor is not None:
 
 proto = json.loads((folder / "protocol.json").read_text(encoding="utf-8"))
 commit = (proto.get("scene") or {}).get("seed_commit")
+seed = a.seed
+if seed is None and a.seed_index is not None:
+    seeds_file = ROOT / "configs" / "seeds.json"
+    if not seeds_file.exists():
+        print(f"缺少 {seeds_file}（预注册明文，由主控保管）")
+        sys.exit(1)
+    table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
+    if a.seed_index not in table:
+        print(f"预注册表里没有序号 {a.seed_index}")
+        sys.exit(1)
+    seed = table[a.seed_index]
 seed_ok = None
-if a.seed is not None:
-    calc = hashlib.sha256(("sr:" + str(a.seed)).encode()).hexdigest()
+if seed is not None:
+    calc = hashlib.sha256(("sr:" + str(seed)).encode()).hexdigest()
     seed_ok = (calc == commit)
     if not seed_ok:
-        print(f"!! 种子承诺不匹配：给定 {a.seed} 的哈希 {calc[:12]}… ≠ 记录 {str(commit)[:12]}…（该次成绩应作废）")
+        print(f"!! 种子承诺不匹配：给定种子的哈希 {calc[:12]}… ≠ 记录 {str(commit)[:12]}…（该次成绩应作废）")
 
 m = metrics.analyze_work(folder)
 s = metrics.score_work(m)

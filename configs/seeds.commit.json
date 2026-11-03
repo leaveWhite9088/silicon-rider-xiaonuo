@@ -1,0 +1,18 @@
+{
+ "created": "2026-11-03T14:08:19.379Z",
+ "note": "本组种子一次性确定、此后不更换。明文在 configs/seeds.json（不进库，由主控保管备份）；此处只公开承诺。",
+ "commits": [
+  {
+   "index": 1,
+   "commit": "3c5a5e38c2d43de28910364d3ca2d42da154819beb33a268067b861a56afd559"
+  },
+  {
+   "index": 2,
+   "commit": "c7d7f19209c2bc6ae47904c45db7436fce8874f03cc82cc191a752f9a3891de4"
+  },
+  {
+   "index": 3,
+   "commit": "805e1ba60ff07a98005525a970736a815c5787f270a4210e23272add11ce0e25"
+  }
+ ]
+}

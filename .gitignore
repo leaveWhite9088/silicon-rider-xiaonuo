@@ -4,9 +4,9 @@ runs/*
 out/
 tests/_tmp/
 
-# 种子：绝不入库（承诺可公开，明文只在主控手里）
+# 种子明文：绝不入库（只提交 seeds.commit.json 里的承诺）
 seeds.json
-configs/seeds*.json
+configs/seeds.json
 
 # Python
 __pycache__/

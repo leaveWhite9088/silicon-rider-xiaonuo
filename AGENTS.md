@@ -81,28 +81,29 @@
 
 只有主控/运行者/评审需要读这节；如果你只是选手，跳到 §3。
 
-### 标准流程
+### 标准流程（种子已预注册，不需要再生成）
 
 ```sh
-# 1) 生成并保管种子（承诺可公开，明文只在你手里）
-node tools/gen_seeds.mjs --n 3 --out seeds.json
+# 1) 起局：种子按**序号**取（明文在 configs/seeds.json，由主控保管，执行者不需要看到）
+node tools/harness.mjs --model <名>-s1 --seed-index 1 --policy examples/policy-greedy.mjs
 
-# 2) 在把任务交给模型之前记下 t0，再起局
-pwsh scripts/run_session.ps1 -Model <名>-s1 -Seed <种子> -T0 <ISO 时刻>
+# 2) 评分（核对承诺 + 写事实卡 + 追加榜单摘要）
+python src/scoring/score_run.py runs/<名>-s1 <名> --seed-index 1
 
-# 3) 用种子核对承诺后评分
-python src/scoring/score_run.py runs/<名>-s1 <名> --seed <种子>
+# 3) 裁判素材包（打印事实卡 + 生成待填草稿）
+python src/scoring/judge_pack.py --model <名> --print
+#    把草稿里的 D1/D2/D3 填好（多位裁判就填多组），然后出榜：
+python src/scoring/finalize.py --model <名> \
+    --runs runs/<名>-s1 runs/<名>-s2 runs/<名>-s3 \
+    --seed-indexes 1,2,3 --d-file leaderboard/verdicts/<名>.draft.json
 
-# 4) 三个种子汇总
-python src/scoring/aggregate.py --prefix runs/<名>
-
-# 5) 出榜：核对承诺 → 回放核验 → 合成总分 → 写 leaderboard/scores.md
-python src/scoring/finalize.py --model <名> --runs runs/<名>-s1 runs/<名>-s2 runs/<名>-s3 \
-       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
-
-# 6) 换种子时重标锚值，写回 configs/benchmark.json → scoring.anchor_yuan
-node tools/bounds.mjs --seed <种子>
+# 4) 换批才需要重标锚值（本批固定种子，不换）
+node tools/bounds.mjs --seed-index 1
 ```
+
+- **种子固定**：本批只用 `configs/seeds.json` 里预注册的 3 个种子，`configs/seeds.commit.json` 公开承诺。
+  不许更换；确需更换会升版本号并重标锚（否则历史成绩不可比）。
+- **执行者只需一句话**："读 AGENTS.md，按第 2 节跑第 1/2/3 个种子"。它自己写 policy → 跑 harness。
 
 `scripts/score_all.ps1 -SeedsFile seeds.json -Prefix <名>` 可把"评分 + 汇总"一次做完（按承诺哈希自动匹配种子）。
 
