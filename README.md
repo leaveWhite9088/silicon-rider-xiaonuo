@@ -56,23 +56,25 @@
 - 三个维度：**D1 挑单与收益取舍 11**、**D2 组合同送与动态调整 10**、**D3 风险权衡与班次管理 9**。
 - 3 位互不可见的裁判各评一遍取中位；某格极差 ≥3 级转仲裁。
 
-## 两种跑法
+## 两种部署（区别只在于“谁按下开始键”）
 
-| | 谁起局 / 喂动作 | 种子与 t0 | 官方评分 |
-| --- | --- | --- | --- |
-| **单代理** | 模型自己（有 shell：自己写 policy、自己跑 harness） | 由主控给（只告序号） | 主控跑 |
-| **双代理** | 运行器起局，模型只回 JSON 行 | 运行器 | 运行器 |
+| 部署 | 谁起局 | 典型场景 |
+| --- | --- | --- |
+| **自己起局** | 被测模型自己跑 `play` / `harness`（需要 shell） | 你想要的用法：主代理派 3 个子代理，各跑一个种子，**并发** |
+| **别人起局** | 运行器起局，模型只回 JSON 行（无 shell） | 要严格物理隔离时 |
 
-这不是“两个人”，而是**两个信任域**：选手域可以随便操作、写脚本代打；但**种子、`t0`、官方评分、榜单**属于裁判域——选手自己握了，评测就没有意义。
+两种部署的规则和计分完全一样；**并发是安全的**——每局独立进程、独立输出目录，互不共享状态。
 
-## 跑一局 / 看排名
+## 跑 3 轮 / 看排名
 
 ```sh
-# 跑一局：种子只给序号；policy 就是“会玩的机器人”，示例见 examples/
-node tools/harness.mjs --model Demo-s1 --seed-index 1 --policy examples/policy-greedy.mjs
+# 一句话跑 3 轮：种子 1/2/3 各一局（并发），并顺手评分
+node tools/play.mjs --model Demo --policy examples/policy-greedy.mjs --seeds 1,2,3 --score
 
-# 评分（核对承诺 + 写事实卡）；之后由裁判给 D，再出榜——完整流程见 AGENTS.md 第 2 节
-python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1
+# 之后由裁判给 D、出榜——完整流程见 AGENTS.md 第 2 节
+python src/scoring/judge_pack.py --model Demo --print
+python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
+       --seed-indexes 1,2,3 --d-file leaderboard/verdicts/Demo.draft.json
 ```
 
 - **排名**：[`leaderboard/scores.md`](leaderboard/scores.md)
