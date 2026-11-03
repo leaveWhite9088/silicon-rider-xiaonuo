@@ -86,6 +86,10 @@ python src/scoring/score_run.py runs/Demo Demo --seed 12345
 # 多种子汇总
 python src/scoring/aggregate.py --prefix runs/Demo
 
+# 出榜：核对承诺 → 回放核验 → 合成总分（A+B+C+D）→ 写 leaderboard/scores.md
+python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
+       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
+
 # 换种子标定锚值
 node tools/bounds.mjs --seed 12345
 ```

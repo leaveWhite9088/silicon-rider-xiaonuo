@@ -96,7 +96,11 @@ python src/scoring/score_run.py runs/<名>-s1 <名> --seed <种子>
 # 4) 三个种子汇总
 python src/scoring/aggregate.py --prefix runs/<名>
 
-# 5) 换种子时重标锚值，写回 configs/benchmark.json → scoring.anchor_yuan
+# 5) 出榜：核对承诺 → 回放核验 → 合成总分 → 写 leaderboard/scores.md
+python src/scoring/finalize.py --model <名> --runs runs/<名>-s1 runs/<名>-s2 runs/<名>-s3 \
+       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
+
+# 6) 换种子时重标锚值，写回 configs/benchmark.json → scoring.anchor_yuan
 node tools/bounds.mjs --seed <种子>
 ```
 

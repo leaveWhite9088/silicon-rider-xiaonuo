@@ -19,6 +19,8 @@
 
 - `tools/verify_replay.mjs`：读 `trace.jsonl` 逐条重放、与 `result.json` 对账（不一致退出码 1）。
 - `tests/smoke.ps1` 增加回放断言：冒烟跑完必须回放一致。
+- `src/scoring/finalize.py`：出榜脚本——核对种子承诺、逐目录回放核验、把 A/B/C 与裁判 D 合成总分，
+  写 `leaderboard/scores.md` 与 `leaderboard/verdicts/<模型>.json`（审计留档）。
 
 ### 规则
 

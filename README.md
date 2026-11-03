@@ -85,12 +85,19 @@ python src/scoring/score_run.py runs/Demo-s1 Demo --seed <种子>
 # 3) 三个种子汇总（均值 ± 极差）
 python src/scoring/aggregate.py --prefix runs/Demo
 
-# 4) 生成/检查物理界与锚值（换种子必做）
+# 4) 出榜：核对承诺 + 回放核验 + 合成总分（A+B+C+D）→ 写 leaderboard/scores.md
+python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
+       --seeds <s1>,<s2>,<s3> --d <D1>,<D2>,<D3>
+
+# 5) 生成/检查物理界与锚值（换种子必做）
 node tools/bounds.mjs --seed <种子>
 
-# 5) 自检
+# 6) 自检
 pwsh tests/smoke.ps1
 ```
+
+**排行在哪看**：仓库里的 [`leaderboard/scores.md`](leaderboard/scores.md)（评分自动追加，出榜脚本写最终成绩）；
+推送到 GitHub 后直接看 `https://github.com/<账号>/silicon-rider-xiaonuo/blob/main/leaderboard/scores.md`。
 
 ### 两种跑法（别把自己当裁判）
 
