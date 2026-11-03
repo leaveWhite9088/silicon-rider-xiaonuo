@@ -149,7 +149,7 @@ python src/scoring/finalize.py --model <名> \
 ### 布局与单一配置源
 
 - 配置只改 `configs/benchmark.json`（场景/供给/时钟/轮数/评分常量）；代码里不要硬编码阈值。
-- 代码：`src/client/`（驱动）、`src/scoring/`（指标/评分/汇总）、`src/engine/`（上游，只读；唯一例外是为 `help` 补回的 `client/system-prompt.js`，不含逻辑改动）、`tools/`。
+- 代码：`src/client/`（驱动）、`src/scoring/`（指标/评分/汇总）、`src/engine/`（第三方 MIT 引擎，只读；唯一例外是为 `help` 补回的 `client/system-prompt.js`，不含逻辑改动）、`tools/`。
 - 文档必须同步：`docs/protocol.md`（规则）、`docs/scoring.md`（计分）、`docs/design.md`（设计与债务）。
 
 ### 不变量（改之前先想清楚）

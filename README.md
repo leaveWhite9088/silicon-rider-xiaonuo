@@ -2,7 +2,7 @@
 
 > **一句话**：让 AI 在会动的模拟城市里当 8 小时外卖骑手——在时间、电量、载重、时限，以及“不知道下一单从哪来”的约束下，把这一班的净利做到最大。
 
-模拟引擎来自 **KCORES · Silicon Rider Bench**（MIT，见 `NOTICE.md`），未改逻辑。本仓库是 `xiaonuo-v1.1` 赛制。
+模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.1` 赛制。
 
 ## 一局怎么跑
 
@@ -81,16 +81,10 @@ python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 run
   （GitHub：`https://github.com/leaveWhite9088/silicon-rider-xiaonuo/blob/main/leaderboard/scores.md`）
 - **裁决留档**：`leaderboard/verdicts/<模型>.json`
 
-## 与上游的关系
-
-本仓库**不是** KCORES/silicon-rider-bench 的分支，而是“用它的引擎 + 我们自己的赛制/驱动/评分”的衍生基准：
-班次 480 分钟（上游 Level 1 是 1440）、供给按模拟时间（上游按轮次）、13 个工具（上游 10 个）、A/B/C/D 四层评分（上游四项指标）。
-**分数不可与上游比较**。详见 [`UPSTREAM.md`](UPSTREAM.md)。
-
 ## 目录
 
 ```
-src/engine/     引擎（上游同源，只读）
+src/engine/     第三方 MIT 引擎（只读，许可见其中 LICENSE）
 src/client/     会话驱动：起局、观察、调用、结算
 src/scoring/    A/B/C 指标 + 事实卡、评分入口、汇总、出榜
 configs/        benchmark.json（唯一配置源）、seeds.commit.json（种子公开承诺）
@@ -103,4 +97,4 @@ leaderboard/    榜单与裁决
 
 ## 版本
 
-`xiaonuo-v1.1`，变更见 `CHANGELOG.md`；引擎许可见 `NOTICE.md`。
+`xiaonuo-v1.1`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。
