@@ -1,0 +1,18 @@
+# 运行产物
+runs/*
+!runs/README.md
+out/
+tests/_tmp/
+
+# 种子：绝不入库（承诺可公开，明文只在主控手里）
+seeds.json
+configs/seeds*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志与临时文件
+*.log
+*.tmp
