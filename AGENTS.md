@@ -83,7 +83,21 @@
 
 ### 标准流程（3 轮 = 3 个种子，取均值 ± 极差）
 
-**一条命令跑完 3 轮**（并发，每个种子一个独立进程；要串行加 `--serial`）：
+有两种驱动方式，**任选**：
+
+**A. 逐轮玩（像调用工具一样，推荐给 LLM 执行者）**——不用写 policy：
+
+```sh
+node tools/session.mjs start --model <名>-s1 --seed-index 1     # 起局，返回第一条观察
+node tools/session.mjs act --session <名>-s1 '{"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}'
+node tools/session.mjs state --session <名>-s1                  # 看当前观察
+node tools/session.mjs stop --session <名>-s1                   # 收工（等价 quit）
+```
+
+每次 `act` 就是一次真实工具调用，返回新观察，并带 `advanced`（本次推进了多少分钟）。
+三个种子 = 三个 session（模型名不同即可，可并行）。
+
+**B. 批量跑（写 policy，一条命令三局并发）**：
 
 ```sh
 node tools/play.mjs --model <名> --policy <你的policy.mjs> --seeds 1,2,3 --score

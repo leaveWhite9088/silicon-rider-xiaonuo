@@ -68,7 +68,11 @@
 ## 跑 3 轮 / 看排名
 
 ```sh
-# 一句话跑 3 轮：种子 1/2/3 各一局（并发），并顺手评分
+# 逐轮玩（像调用工具一样）：起局 → act → act → … → stop
+node tools/session.mjs start --model Demo-s1 --seed-index 1
+node tools/session.mjs act --session Demo-s1 '{"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}'
+
+# 或批量跑（写 policy，一条命令三局并发并评分）
 node tools/play.mjs --model Demo --policy examples/policy-greedy.mjs --seeds 1,2,3 --score
 
 # 之后由裁判给 D、出榜——完整流程见 AGENTS.md 第 2 节
