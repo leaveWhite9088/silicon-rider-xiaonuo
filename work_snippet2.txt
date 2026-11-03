@@ -1,0 +1,61 @@
+
+// Exact small-state deadline-constrained route search. Returns earliest feasible route.
+// Among equal completion times, prefer shorter travel distance.
+function planRoute(pos, now, orders, opts={}) {
+  const n = orders.length;
+  if (!n) return {completion:now, distance:0, actions:[], deliveries:{}};
+  const safety = Number(opts.safety ?? 0);
+  const end = Number(opts.end ?? 840);
+  const pow = [1]; for (let i=1;i<=n;i++) pow[i]=pow[i-1]*3;
+  let startMask = 0;
+  for (let i=0;i<n;i++) if (orders[i].pickedUp) startMask += pow[i]; // status 1
+  const fullMask = pow[n]-1; // all status 2
+  const key = (p,m)=>p+'|'+m;
+  const best = new Map(), bestD = new Map(), prev = new Map();
+  const startK = key(pos,startMask); best.set(startK, now); bestD.set(startK, 0);
+  let pq = [{p:pos,m:startMask,t:now,d:0}];
+  let goal = null;
+  while (pq.length) {
+    pq.sort((a,b)=> a.t-b.t || a.d-b.d);
+    const cur = pq.shift();
+    const k = key(cur.p,cur.m);
+    if (cur.t > (best.get(k) ?? 1e9) + 1e-9 || cur.d > (bestD.get(k) ?? 1e18) + 1e-9) continue;
+    if (cur.m === fullMask) { goal = cur; break; }
+    const add = (np,nm,nt,nd,act) => {
+      if (nt > end + 1e-9) return;
+      const nk = key(np,nm);
+      if (nt < (best.get(nk) ?? 1e9) - 1e-9 || (Math.abs(nt-(best.get(nk)??1e9))<1e-9 && nd < (bestD.get(nk)??1e18)-1e-9)) {
+      }
+    };
+    // Service actions available at the current node.
+    for (let i=0;i<n;i++) {
+      const st = Math.floor(cur.m / pow[i]) % 3;
+      if (st===0 && orders[i].pickup===cur.p) add(cur.p, cur.m+pow[i], cur.t+2, cur.d, {type:'pickup_food',orderId:orders[i].id,at:cur.p});
+      if (st===1 && orders[i].delivery===cur.p) {
+        const nt = cur.t+1;
+        if (nt <= orders[i].deadline - safety + 1e-9) add(cur.p, cur.m+pow[i], nt, cur.d, {type:'deliver_food',orderId:orders[i].id,at:cur.p});
+      }
+    }
+    // Travel to any remaining pickup/delivery target.
+    const seenTargets = new Set();
+    for (let i=0;i<n;i++) {
+      const st = Math.floor(cur.m / pow[i]) % 3;
+      let target=null, typ=null;
+      if (st===0) { target=orders[i].pickup; typ='pickup'; }
+      else if (st===1) { target=orders[i].delivery; typ='delivery'; }
+      if (!target || target===cur.p) continue;
+      if (seenTargets.has(target)) continue; seenTargets.add(target);
+      const dd = shortest(cur.p,target);
+      if (dd>=1e8) continue;
+      const nt = cur.t + travelTime(dd,cur.t);
+      add(target, cur.m, nt, cur.d+dd, {type:'move_to',targetLocationId:target,at:cur.p,dist:dd});
+    }
+  }
+  if (!goal) return null;
+  const actions=[]; let k = key(goal.p,goal.m);
+  while (k !== startK) { const pr=prev.get(k); if(!pr) break; actions.push(pr.act); k=pr.k; }
+  actions.reverse();
+  return {completion:goal.t, distance:goal.d, actions};
+}
+
+function currentCarried(obs) { return mkOrders(obs, []); }

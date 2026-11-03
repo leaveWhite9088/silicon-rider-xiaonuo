@@ -1,0 +1,123 @@
+{
+  "minute": 360,
+  "remainingMinutes": 480,
+  "position": "node_0",
+  "battery": 100,
+  "batteryRange": 50,
+  "weight": 0,
+  "remainingCapacity": 10,
+  "profit": 0,
+  "carried": [],
+  "openOrders": [
+    {
+      "id": "order_1",
+      "fee": 17,
+      "dist": 7,
+      "pickup": "node_62",
+      "delivery": "node_89",
+      "timeLimit": 32,
+      "createdAt": 360,
+      "weight": 0.55,
+      "expiresIn": 32
+    },
+    {
+      "id": "order_2",
+      "fee": 16.1,
+      "dist": 9,
+      "pickup": "node_6",
+      "delivery": "node_1",
+      "timeLimit": 38,
+      "createdAt": 360,
+      "weight": 0.74,
+      "expiresIn": 38
+    },
+    {
+      "id": "order_3",
+      "fee": 16.15,
+      "dist": 15,
+      "pickup": "node_86",
+      "delivery": "node_9",
+      "timeLimit": 56,
+      "createdAt": 360,
+      "weight": 0.82,
+      "expiresIn": 56
+    },
+    {
+      "id": "order_4",
+      "fee": 12.63,
+      "dist": 11,
+      "pickup": "node_88",
+      "delivery": "node_11",
+      "timeLimit": 44,
+      "createdAt": 360,
+      "weight": 0.59,
+      "expiresIn": 44
+    },
+    {
+      "id": "order_5",
+      "fee": 19.53,
+      "dist": 15,
+      "pickup": "node_64",
+      "delivery": "node_39",
+      "timeLimit": 56,
+      "createdAt": 360,
+      "weight": 0.82,
+      "expiresIn": 56
+    },
+    {
+      "id": "order_6",
+      "fee": 17.63,
+      "dist": 9,
+      "pickup": "node_35",
+      "delivery": "node_11",
+      "timeLimit": 38,
+      "createdAt": 360,
+      "weight": 0.51,
+      "expiresIn": 38
+    },
+    {
+      "id": "order_7",
+      "fee": 13.85,
+      "dist": 9.4,
+      "pickup": "node_93",
+      "delivery": "node_36",
+      "timeLimit": 39.2,
+      "createdAt": 360,
+      "weight": 0.88,
+      "expiresIn": 39.2
+    },
+    {
+      "id": "order_8",
+      "fee": 14.15,
+      "dist": 13,
+      "pickup": "node_32",
+      "delivery": "node_1",
+      "timeLimit": 50,
+      "createdAt": 360,
+      "weight": 0.69,
+      "expiresIn": 50
+    },
+    {
+      "id": "order_9",
+      "fee": 17.79,
+      "dist": 14,
+      "pickup": "node_61",
+      "delivery": "node_15",
+      "timeLimit": 53,
+      "createdAt": 360,
+      "weight": 0.71,
+      "expiresIn": 53
+    },
+    {
+      "id": "order_10",
+      "fee": 15.54,
+      "dist": 6,
+      "pickup": "node_5",
+      "delivery": "node_39",
+      "timeLimit": 29,
+      "createdAt": 360,
+      "weight": 0.99,
+      "expiresIn": 29
+    }
+  ]
+}

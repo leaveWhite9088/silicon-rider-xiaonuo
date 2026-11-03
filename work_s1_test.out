@@ -1,0 +1,16 @@
+[06:16] ¥0.00 B84 node_16 C2 pickup_food order_6 | service-at-position
+[06:18] ¥0.00 B84 node_16 C2 move_to node_30 | route node_30 finish=435
+[06:22] ¥0.00 B80 node_30 C2 pickup_food order_10 | service-at-position
+[06:24] ¥0.00 B80 node_30 C2 move_to node_33 | route node_33 finish=434
+[06:44] ¥0.00 B60 node_33 C2 deliver_food order_6 | service-at-position
+[06:45] ¥17.10 B60 node_33 C1 accept_order order_3 | accept order_3 fee=25.71 rate=0.99 total=54 deadline=476 thr=0.29
+[06:45] ¥17.10 B60 node_33 C2 move_to node_63 | route node_63 finish=459
+[06:49] ¥17.10 B56 node_63 C2 pickup_food order_3 | service-at-position
+[06:51] ¥17.10 B56 node_63 C2 move_to node_49 | route node_49 finish=458
+[07:13] ¥17.10 B34 node_49 C2 deliver_food order_10 | service-at-position
+[07:14] ¥42.29 B34 node_49 C1 accept_order order_26 | accept order_26 fee=19.30 rate=1.38 total=37 deadline=475 thr=0.29
+[07:14] ¥42.29 B34 node_49 C2 move_to node_48 | swap-trip node_48 d=7.0 range=17.0
+[07:30] ¥42.29 B20 node_48 C2 move_to node_53 | fallback-route
+[07:38] ¥42.29 B12 node_53 C2 move_to node_48 | swap-trip node_48 d=4.0 range=6.0
+[07:46] ¥42.29 B4 node_48 C2 swap_battery  | swap-here
+{"session":"deepseek-v4.1-flash-s1","actions":16,"finalFactor":2,"log":"work_play_deepseek-v4.1-flash-s1.jsonl"}

@@ -81,6 +81,12 @@ python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 run
   （GitHub：`https://github.com/leaveWhite9088/silicon-rider-xiaonuo/blob/main/leaderboard/scores.md`）
 - **裁决留档**：`leaderboard/verdicts/<模型>.json`
 
+## 与上游的关系
+
+本仓库**不是** KCORES/silicon-rider-bench 的分支，而是“用它的引擎 + 我们自己的赛制/驱动/评分”的衍生基准：
+班次 480 分钟（上游 Level 1 是 1440）、供给按模拟时间（上游按轮次）、13 个工具（上游 10 个）、A/B/C/D 四层评分（上游四项指标）。
+**分数不可与上游比较**。详见 [`UPSTREAM.md`](UPSTREAM.md)。
+
 ## 目录
 
 ```

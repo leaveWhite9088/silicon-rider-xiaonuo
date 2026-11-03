@@ -1,0 +1,2490 @@
+{
+  "locationsByType": {
+    "restaurant": [
+      "node_0(餐厅_0)",
+      "node_5(餐厅_5)",
+      "node_6(餐厅_6)",
+      "node_13(餐厅_13)",
+      "node_14(餐厅_14)",
+      "node_26(餐厅_26)",
+      "node_29(餐厅_29)",
+      "node_32(餐厅_32)",
+      "node_33(餐厅_33)",
+      "node_36(餐厅_36)",
+      "node_39(餐厅_39)",
+      "node_40(餐厅_40)",
+      "node_43(餐厅_43)",
+      "node_46(餐厅_46)",
+      "node_50(餐厅_50)",
+      "node_52(餐厅_52)",
+      "node_53(餐厅_53)",
+      "node_55(餐厅_55)",
+      "node_59(餐厅_59)",
+      "node_61(餐厅_61)",
+      "node_65(餐厅_65)",
+      "node_69(餐厅_69)",
+      "node_71(餐厅_71)",
+      "node_75(餐厅_75)",
+      "node_77(餐厅_77)",
+      "node_78(餐厅_78)",
+      "node_84(餐厅_84)",
+      "node_85(餐厅_85)",
+      "node_89(餐厅_89)",
+      "node_90(餐厅_90)",
+      "node_93(餐厅_93)",
+      "node_97(餐厅_97)"
+    ],
+    "supermarket": [
+      "node_3(超市_3)",
+      "node_11(超市_11)",
+      "node_16(超市_16)",
+      "node_21(超市_21)",
+      "node_22(超市_22)",
+      "node_41(超市_41)",
+      "node_44(超市_44)",
+      "node_51(超市_51)",
+      "node_58(超市_58)",
+      "node_70(超市_70)",
+      "node_79(超市_79)"
+    ],
+    "pharmacy": [
+      "node_9(药店_9)",
+      "node_10(药店_10)",
+      "node_12(药店_12)",
+      "node_18(药店_18)",
+      "node_30(药店_30)",
+      "node_62(药店_62)",
+      "node_66(药店_66)",
+      "node_87(药店_87)"
+    ],
+    "residential": [
+      "node_1(居民区_1)",
+      "node_4(居民区_4)",
+      "node_7(居民区_7)",
+      "node_15(居民区_15)",
+      "node_17(居民区_17)",
+      "node_19(居民区_19)",
+      "node_20(居民区_20)",
+      "node_23(居民区_23)",
+      "node_28(居民区_28)",
+      "node_31(居民区_31)",
+      "node_34(居民区_34)",
+      "node_37(居民区_37)",
+      "node_42(居民区_42)",
+      "node_45(居民区_45)",
+      "node_47(居民区_47)",
+      "node_48(居民区_48)",
+      "node_54(居民区_54)",
+      "node_56(居民区_56)",
+      "node_60(居民区_60)",
+      "node_63(居民区_63)",
+      "node_73(居民区_73)",
+      "node_76(居民区_76)",
+      "node_83(居民区_83)",
+      "node_88(居民区_88)",
+      "node_91(居民区_91)",
+      "node_96(居民区_96)",
+      "node_98(居民区_98)",
+      "node_99(居民区_99)"
+    ],
+    "office": [
+      "node_2(写字楼_2)",
+      "node_8(写字楼_8)",
+      "node_24(写字楼_24)",
+      "node_38(写字楼_38)",
+      "node_49(写字楼_49)",
+      "node_57(写字楼_57)",
+      "node_64(写字楼_64)",
+      "node_67(写字楼_67)",
+      "node_68(写字楼_68)",
+      "node_72(写字楼_72)",
+      "node_74(写字楼_74)",
+      "node_82(写字楼_82)",
+      "node_92(写字楼_92)",
+      "node_94(写字楼_94)"
+    ],
+    "battery_swap": [
+      "node_25(换电站_25)",
+      "node_27(换电站_27)",
+      "node_35(换电站_35)",
+      "node_80(换电站_80)",
+      "node_81(换电站_81)",
+      "node_86(换电站_86)",
+      "node_95(换电站_95)"
+    ]
+  },
+  "connections": {
+    "node_0": [
+      {
+        "to": "node_46",
+        "name": "餐厅_46",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_36",
+        "name": "餐厅_36",
+        "type": "restaurant",
+        "distance": "5.00km"
+      }
+    ],
+    "node_1": [
+      {
+        "to": "node_2",
+        "name": "写字楼_2",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_7",
+        "name": "居民区_7",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_48",
+        "name": "居民区_48",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_57",
+        "name": "写字楼_57",
+        "type": "office",
+        "distance": "3.00km"
+      }
+    ],
+    "node_2": [
+      {
+        "to": "node_1",
+        "name": "居民区_1",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_13",
+        "name": "餐厅_13",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_96",
+        "name": "居民区_96",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_26",
+        "name": "餐厅_26",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_3": [
+      {
+        "to": "node_78",
+        "name": "餐厅_78",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_31",
+        "name": "居民区_31",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_98",
+        "name": "居民区_98",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_4": [
+      {
+        "to": "node_72",
+        "name": "写字楼_72",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_30",
+        "name": "药店_30",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_35",
+        "name": "换电站_35",
+        "type": "battery_swap",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_52",
+        "name": "餐厅_52",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_5": [
+      {
+        "to": "node_54",
+        "name": "居民区_54",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_66",
+        "name": "药店_66",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_44",
+        "name": "超市_44",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_71",
+        "name": "餐厅_71",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_6": [
+      {
+        "to": "node_26",
+        "name": "餐厅_26",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_79",
+        "name": "超市_79",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_21",
+        "name": "超市_21",
+        "type": "supermarket",
+        "distance": "1.00km"
+      }
+    ],
+    "node_7": [
+      {
+        "to": "node_75",
+        "name": "餐厅_75",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_1",
+        "name": "居民区_1",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_68",
+        "name": "写字楼_68",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_21",
+        "name": "超市_21",
+        "type": "supermarket",
+        "distance": "2.00km"
+      }
+    ],
+    "node_8": [
+      {
+        "to": "node_80",
+        "name": "换电站_80",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_33",
+        "name": "餐厅_33",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_52",
+        "name": "餐厅_52",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_22",
+        "name": "超市_22",
+        "type": "supermarket",
+        "distance": "2.00km"
+      }
+    ],
+    "node_9": [
+      {
+        "to": "node_64",
+        "name": "写字楼_64",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_84",
+        "name": "餐厅_84",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_42",
+        "name": "居民区_42",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_29",
+        "name": "餐厅_29",
+        "type": "restaurant",
+        "distance": "3.00km"
+      }
+    ],
+    "node_10": [
+      {
+        "to": "node_27",
+        "name": "换电站_27",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_76",
+        "name": "居民区_76",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_54",
+        "name": "居民区_54",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_15",
+        "name": "居民区_15",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_11": [
+      {
+        "to": "node_45",
+        "name": "居民区_45",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_71",
+        "name": "餐厅_71",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_89",
+        "name": "餐厅_89",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_12": [
+      {
+        "to": "node_16",
+        "name": "超市_16",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_65",
+        "name": "餐厅_65",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_94",
+        "name": "写字楼_94",
+        "type": "office",
+        "distance": "3.00km"
+      }
+    ],
+    "node_13": [
+      {
+        "to": "node_2",
+        "name": "写字楼_2",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_94",
+        "name": "写字楼_94",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_40",
+        "name": "餐厅_40",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_21",
+        "name": "超市_21",
+        "type": "supermarket",
+        "distance": "1.00km"
+      }
+    ],
+    "node_14": [
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_95",
+        "name": "换电站_95",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_28",
+        "name": "居民区_28",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_23",
+        "name": "居民区_23",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_57",
+        "name": "写字楼_57",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_15": [
+      {
+        "to": "node_46",
+        "name": "餐厅_46",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_10",
+        "name": "药店_10",
+        "type": "pharmacy",
+        "distance": "3.00km"
+      },
+      {
+        "to": "node_39",
+        "name": "餐厅_39",
+        "type": "restaurant",
+        "distance": "3.00km"
+      }
+    ],
+    "node_16": [
+      {
+        "to": "node_12",
+        "name": "药店_12",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_42",
+        "name": "居民区_42",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_40",
+        "name": "餐厅_40",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_73",
+        "name": "居民区_73",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_17": [
+      {
+        "to": "node_14",
+        "name": "餐厅_14",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_34",
+        "name": "居民区_34",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_23",
+        "name": "居民区_23",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_28",
+        "name": "居民区_28",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_90",
+        "name": "餐厅_90",
+        "type": "restaurant",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_95",
+        "name": "换电站_95",
+        "type": "battery_swap",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_82",
+        "name": "写字楼_82",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_18": [
+      {
+        "to": "node_99",
+        "name": "居民区_99",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_64",
+        "name": "写字楼_64",
+        "type": "office",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_36",
+        "name": "餐厅_36",
+        "type": "restaurant",
+        "distance": "3.00km"
+      }
+    ],
+    "node_19": [
+      {
+        "to": "node_81",
+        "name": "换电站_81",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_44",
+        "name": "超市_44",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_29",
+        "name": "餐厅_29",
+        "type": "restaurant",
+        "distance": "4.00km"
+      },
+      {
+        "to": "node_95",
+        "name": "换电站_95",
+        "type": "battery_swap",
+        "distance": "5.00km"
+      }
+    ],
+    "node_20": [
+      {
+        "to": "node_58",
+        "name": "超市_58",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_99",
+        "name": "居民区_99",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_39",
+        "name": "餐厅_39",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_29",
+        "name": "餐厅_29",
+        "type": "restaurant",
+        "distance": "2.24km"
+      },
+      {
+        "to": "node_43",
+        "name": "餐厅_43",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_21": [
+      {
+        "to": "node_77",
+        "name": "餐厅_77",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_13",
+        "name": "餐厅_13",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_6",
+        "name": "餐厅_6",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_7",
+        "name": "居民区_7",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_22": [
+      {
+        "to": "node_81",
+        "name": "换电站_81",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_24",
+        "name": "写字楼_24",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_74",
+        "name": "写字楼_74",
+        "type": "office",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_8",
+        "name": "写字楼_8",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_23": [
+      {
+        "to": "node_90",
+        "name": "餐厅_90",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_28",
+        "name": "居民区_28",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_25",
+        "name": "换电站_25",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_14",
+        "name": "餐厅_14",
+        "type": "restaurant",
+        "distance": "1.41km"
+      }
+    ],
+    "node_24": [
+      {
+        "to": "node_74",
+        "name": "写字楼_74",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_61",
+        "name": "餐厅_61",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_22",
+        "name": "超市_22",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_81",
+        "name": "换电站_81",
+        "type": "battery_swap",
+        "distance": "1.41km"
+      }
+    ],
+    "node_25": [
+      {
+        "to": "node_69",
+        "name": "餐厅_69",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_23",
+        "name": "居民区_23",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_47",
+        "name": "居民区_47",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_26": [
+      {
+        "to": "node_68",
+        "name": "写字楼_68",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_6",
+        "name": "餐厅_6",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_2",
+        "name": "写字楼_2",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_27": [
+      {
+        "to": "node_10",
+        "name": "药店_10",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_78",
+        "name": "餐厅_78",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_98",
+        "name": "居民区_98",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_85",
+        "name": "餐厅_85",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_28": [
+      {
+        "to": "node_23",
+        "name": "居民区_23",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_14",
+        "name": "餐厅_14",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_69",
+        "name": "餐厅_69",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_67",
+        "name": "写字楼_67",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_29": [
+      {
+        "to": "node_58",
+        "name": "超市_58",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_87",
+        "name": "药店_87",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_20",
+        "name": "居民区_20",
+        "type": "residential",
+        "distance": "2.24km"
+      },
+      {
+        "to": "node_9",
+        "name": "药店_9",
+        "type": "pharmacy",
+        "distance": "3.00km"
+      },
+      {
+        "to": "node_19",
+        "name": "居民区_19",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_30": [
+      {
+        "to": "node_59",
+        "name": "餐厅_59",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_35",
+        "name": "换电站_35",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_4",
+        "name": "居民区_4",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_31": [
+      {
+        "to": "node_61",
+        "name": "餐厅_61",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_3",
+        "name": "超市_3",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_88",
+        "name": "居民区_88",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_80",
+        "name": "换电站_80",
+        "type": "battery_swap",
+        "distance": "4.00km"
+      }
+    ],
+    "node_32": [
+      {
+        "to": "node_62",
+        "name": "药店_62",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_67",
+        "name": "写字楼_67",
+        "type": "office",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_68",
+        "name": "写字楼_68",
+        "type": "office",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_51",
+        "name": "超市_51",
+        "type": "supermarket",
+        "distance": "4.00km"
+      }
+    ],
+    "node_33": [
+      {
+        "to": "node_8",
+        "name": "写字楼_8",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_81",
+        "name": "换电站_81",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_70",
+        "name": "超市_70",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_56",
+        "name": "居民区_56",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_34": [
+      {
+        "to": "node_63",
+        "name": "居民区_63",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_95",
+        "name": "换电站_95",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_70",
+        "name": "超市_70",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_35": [
+      {
+        "to": "node_30",
+        "name": "药店_30",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_55",
+        "name": "餐厅_55",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_4",
+        "name": "居民区_4",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_80",
+        "name": "换电站_80",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_82",
+        "name": "写字楼_82",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_36": [
+      {
+        "to": "node_18",
+        "name": "药店_18",
+        "type": "pharmacy",
+        "distance": "3.00km"
+      },
+      {
+        "to": "node_0",
+        "name": "餐厅_0",
+        "type": "restaurant",
+        "distance": "5.00km"
+      }
+    ],
+    "node_37": [
+      {
+        "to": "node_38",
+        "name": "写字楼_38",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_60",
+        "name": "居民区_60",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_96",
+        "name": "居民区_96",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_75",
+        "name": "餐厅_75",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_92",
+        "name": "写字楼_92",
+        "type": "office",
+        "distance": "2.24km"
+      }
+    ],
+    "node_38": [
+      {
+        "to": "node_51",
+        "name": "超市_51",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_48",
+        "name": "居民区_48",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_73",
+        "name": "居民区_73",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_37",
+        "name": "居民区_37",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_39": [
+      {
+        "to": "node_20",
+        "name": "居民区_20",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_15",
+        "name": "居民区_15",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_40": [
+      {
+        "to": "node_96",
+        "name": "居民区_96",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_13",
+        "name": "餐厅_13",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_16",
+        "name": "超市_16",
+        "type": "supermarket",
+        "distance": "2.00km"
+      }
+    ],
+    "node_41": [
+      {
+        "to": "node_53",
+        "name": "餐厅_53",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_47",
+        "name": "居民区_47",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_97",
+        "name": "餐厅_97",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_42": [
+      {
+        "to": "node_83",
+        "name": "居民区_83",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_65",
+        "name": "餐厅_65",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_16",
+        "name": "超市_16",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_9",
+        "name": "药店_9",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      }
+    ],
+    "node_43": [
+      {
+        "to": "node_87",
+        "name": "药店_87",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_83",
+        "name": "居民区_83",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_73",
+        "name": "居民区_73",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_48",
+        "name": "居民区_48",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_20",
+        "name": "居民区_20",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_44": [
+      {
+        "to": "node_74",
+        "name": "写字楼_74",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_19",
+        "name": "居民区_19",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_5",
+        "name": "餐厅_5",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_45": [
+      {
+        "to": "node_11",
+        "name": "超市_11",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_99",
+        "name": "居民区_99",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_46": [
+      {
+        "to": "node_0",
+        "name": "餐厅_0",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_15",
+        "name": "居民区_15",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_66",
+        "name": "药店_66",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      }
+    ],
+    "node_47": [
+      {
+        "to": "node_41",
+        "name": "超市_41",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_25",
+        "name": "换电站_25",
+        "type": "battery_swap",
+        "distance": "4.00km"
+      }
+    ],
+    "node_48": [
+      {
+        "to": "node_38",
+        "name": "写字楼_38",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_93",
+        "name": "餐厅_93",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_43",
+        "name": "餐厅_43",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_1",
+        "name": "居民区_1",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_49": [
+      {
+        "to": "node_85",
+        "name": "餐厅_85",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_86",
+        "name": "换电站_86",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_88",
+        "name": "居民区_88",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_50": [
+      {
+        "to": "node_72",
+        "name": "写字楼_72",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_59",
+        "name": "餐厅_59",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_88",
+        "name": "居民区_88",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_51": [
+      {
+        "to": "node_92",
+        "name": "写字楼_92",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_38",
+        "name": "写字楼_38",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_56",
+        "name": "居民区_56",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_32",
+        "name": "餐厅_32",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_52": [
+      {
+        "to": "node_8",
+        "name": "写字楼_8",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_55",
+        "name": "餐厅_55",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_4",
+        "name": "居民区_4",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_53": [
+      {
+        "to": "node_91",
+        "name": "居民区_91",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_41",
+        "name": "超市_41",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_82",
+        "name": "写字楼_82",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_54": [
+      {
+        "to": "node_78",
+        "name": "餐厅_78",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_5",
+        "name": "餐厅_5",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_10",
+        "name": "药店_10",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_74",
+        "name": "写字楼_74",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_55": [
+      {
+        "to": "node_35",
+        "name": "换电站_35",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_70",
+        "name": "超市_70",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_52",
+        "name": "餐厅_52",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_63",
+        "name": "居民区_63",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_56": [
+      {
+        "to": "node_87",
+        "name": "药店_87",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_51",
+        "name": "超市_51",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_33",
+        "name": "餐厅_33",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_57": [
+      {
+        "to": "node_60",
+        "name": "居民区_60",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_67",
+        "name": "写字楼_67",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_14",
+        "name": "餐厅_14",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_1",
+        "name": "居民区_1",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_58": [
+      {
+        "to": "node_20",
+        "name": "居民区_20",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_71",
+        "name": "餐厅_71",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_29",
+        "name": "餐厅_29",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_59": [
+      {
+        "to": "node_30",
+        "name": "药店_30",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_91",
+        "name": "居民区_91",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_50",
+        "name": "餐厅_50",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_60": [
+      {
+        "to": "node_92",
+        "name": "写字楼_92",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_57",
+        "name": "写字楼_57",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_95",
+        "name": "换电站_95",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_37",
+        "name": "居民区_37",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_61": [
+      {
+        "to": "node_31",
+        "name": "居民区_31",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_78",
+        "name": "餐厅_78",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_24",
+        "name": "写字楼_24",
+        "type": "office",
+        "distance": "1.00km"
+      }
+    ],
+    "node_62": [
+      {
+        "to": "node_32",
+        "name": "餐厅_32",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_67",
+        "name": "写字楼_67",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_69",
+        "name": "餐厅_69",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_63": [
+      {
+        "to": "node_34",
+        "name": "居民区_34",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_55",
+        "name": "餐厅_55",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_90",
+        "name": "餐厅_90",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_91",
+        "name": "居民区_91",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_64": [
+      {
+        "to": "node_9",
+        "name": "药店_9",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_84",
+        "name": "餐厅_84",
+        "type": "restaurant",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_18",
+        "name": "药店_18",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_65",
+        "name": "餐厅_65",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_65": [
+      {
+        "to": "node_42",
+        "name": "居民区_42",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_12",
+        "name": "药店_12",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_64",
+        "name": "写字楼_64",
+        "type": "office",
+        "distance": "2.00km"
+      }
+    ],
+    "node_66": [
+      {
+        "to": "node_76",
+        "name": "居民区_76",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_46",
+        "name": "餐厅_46",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_5",
+        "name": "餐厅_5",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_67": [
+      {
+        "to": "node_57",
+        "name": "写字楼_57",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_62",
+        "name": "药店_62",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_32",
+        "name": "餐厅_32",
+        "type": "restaurant",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_28",
+        "name": "居民区_28",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_75",
+        "name": "餐厅_75",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_68": [
+      {
+        "to": "node_26",
+        "name": "餐厅_26",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_7",
+        "name": "居民区_7",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_32",
+        "name": "餐厅_32",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_69": [
+      {
+        "to": "node_25",
+        "name": "换电站_25",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_28",
+        "name": "居民区_28",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_62",
+        "name": "药店_62",
+        "type": "pharmacy",
+        "distance": "2.00km"
+      }
+    ],
+    "node_70": [
+      {
+        "to": "node_55",
+        "name": "餐厅_55",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_34",
+        "name": "居民区_34",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_33",
+        "name": "餐厅_33",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_92",
+        "name": "写字楼_92",
+        "type": "office",
+        "distance": "3.00km"
+      }
+    ],
+    "node_71": [
+      {
+        "to": "node_58",
+        "name": "超市_58",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_11",
+        "name": "超市_11",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_5",
+        "name": "餐厅_5",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_72": [
+      {
+        "to": "node_50",
+        "name": "餐厅_50",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_80",
+        "name": "换电站_80",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_4",
+        "name": "居民区_4",
+        "type": "residential",
+        "distance": "1.00km"
+      }
+    ],
+    "node_73": [
+      {
+        "to": "node_87",
+        "name": "药店_87",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_38",
+        "name": "写字楼_38",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_43",
+        "name": "餐厅_43",
+        "type": "restaurant",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_16",
+        "name": "超市_16",
+        "type": "supermarket",
+        "distance": "3.00km"
+      }
+    ],
+    "node_74": [
+      {
+        "to": "node_24",
+        "name": "写字楼_24",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_44",
+        "name": "超市_44",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_81",
+        "name": "换电站_81",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_22",
+        "name": "超市_22",
+        "type": "supermarket",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_54",
+        "name": "居民区_54",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_75": [
+      {
+        "to": "node_7",
+        "name": "居民区_7",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_67",
+        "name": "写字楼_67",
+        "type": "office",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_37",
+        "name": "居民区_37",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_76": [
+      {
+        "to": "node_66",
+        "name": "药店_66",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_10",
+        "name": "药店_10",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_98",
+        "name": "居民区_98",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_77": [
+      {
+        "to": "node_21",
+        "name": "超市_21",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_94",
+        "name": "写字楼_94",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_79",
+        "name": "超市_79",
+        "type": "supermarket",
+        "distance": "1.00km"
+      }
+    ],
+    "node_78": [
+      {
+        "to": "node_3",
+        "name": "超市_3",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_54",
+        "name": "居民区_54",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_27",
+        "name": "换电站_27",
+        "type": "battery_swap",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_61",
+        "name": "餐厅_61",
+        "type": "restaurant",
+        "distance": "1.00km"
+      }
+    ],
+    "node_79": [
+      {
+        "to": "node_6",
+        "name": "餐厅_6",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_77",
+        "name": "餐厅_77",
+        "type": "restaurant",
+        "distance": "1.00km"
+      }
+    ],
+    "node_80": [
+      {
+        "to": "node_72",
+        "name": "写字楼_72",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_8",
+        "name": "写字楼_8",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_35",
+        "name": "换电站_35",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_31",
+        "name": "居民区_31",
+        "type": "residential",
+        "distance": "4.00km"
+      }
+    ],
+    "node_81": [
+      {
+        "to": "node_22",
+        "name": "超市_22",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_19",
+        "name": "居民区_19",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_74",
+        "name": "写字楼_74",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_24",
+        "name": "写字楼_24",
+        "type": "office",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_33",
+        "name": "餐厅_33",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_82": [
+      {
+        "to": "node_97",
+        "name": "餐厅_97",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_53",
+        "name": "餐厅_53",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_35",
+        "name": "换电站_35",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      }
+    ],
+    "node_83": [
+      {
+        "to": "node_43",
+        "name": "餐厅_43",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_42",
+        "name": "居民区_42",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_93",
+        "name": "餐厅_93",
+        "type": "restaurant",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_89",
+        "name": "餐厅_89",
+        "type": "restaurant",
+        "distance": "3.00km"
+      }
+    ],
+    "node_84": [
+      {
+        "to": "node_89",
+        "name": "餐厅_89",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_99",
+        "name": "居民区_99",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_9",
+        "name": "药店_9",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_64",
+        "name": "写字楼_64",
+        "type": "office",
+        "distance": "1.41km"
+      }
+    ],
+    "node_85": [
+      {
+        "to": "node_49",
+        "name": "写字楼_49",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_27",
+        "name": "换电站_27",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      }
+    ],
+    "node_86": [
+      {
+        "to": "node_49",
+        "name": "写字楼_49",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_98",
+        "name": "居民区_98",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_87": [
+      {
+        "to": "node_56",
+        "name": "居民区_56",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_43",
+        "name": "餐厅_43",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_73",
+        "name": "居民区_73",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_29",
+        "name": "餐厅_29",
+        "type": "restaurant",
+        "distance": "2.00km"
+      }
+    ],
+    "node_88": [
+      {
+        "to": "node_31",
+        "name": "居民区_31",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_49",
+        "name": "写字楼_49",
+        "type": "office",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_50",
+        "name": "餐厅_50",
+        "type": "restaurant",
+        "distance": "4.00km"
+      }
+    ],
+    "node_89": [
+      {
+        "to": "node_84",
+        "name": "餐厅_84",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_11",
+        "name": "超市_11",
+        "type": "supermarket",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_83",
+        "name": "居民区_83",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_90": [
+      {
+        "to": "node_97",
+        "name": "餐厅_97",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_23",
+        "name": "居民区_23",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_63",
+        "name": "居民区_63",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_91": [
+      {
+        "to": "node_59",
+        "name": "餐厅_59",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_53",
+        "name": "餐厅_53",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_63",
+        "name": "居民区_63",
+        "type": "residential",
+        "distance": "3.00km"
+      }
+    ],
+    "node_92": [
+      {
+        "to": "node_51",
+        "name": "超市_51",
+        "type": "supermarket",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_60",
+        "name": "居民区_60",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_37",
+        "name": "居民区_37",
+        "type": "residential",
+        "distance": "2.24km"
+      },
+      {
+        "to": "node_70",
+        "name": "超市_70",
+        "type": "supermarket",
+        "distance": "3.00km"
+      }
+    ],
+    "node_93": [
+      {
+        "to": "node_48",
+        "name": "居民区_48",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_96",
+        "name": "居民区_96",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_83",
+        "name": "居民区_83",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_94": [
+      {
+        "to": "node_13",
+        "name": "餐厅_13",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_77",
+        "name": "餐厅_77",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_12",
+        "name": "药店_12",
+        "type": "pharmacy",
+        "distance": "3.00km"
+      }
+    ],
+    "node_95": [
+      {
+        "to": "node_34",
+        "name": "居民区_34",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_14",
+        "name": "餐厅_14",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_17",
+        "name": "居民区_17",
+        "type": "residential",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_60",
+        "name": "居民区_60",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_19",
+        "name": "居民区_19",
+        "type": "residential",
+        "distance": "5.00km"
+      }
+    ],
+    "node_96": [
+      {
+        "to": "node_40",
+        "name": "餐厅_40",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_93",
+        "name": "餐厅_93",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_2",
+        "name": "写字楼_2",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_37",
+        "name": "居民区_37",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ],
+    "node_97": [
+      {
+        "to": "node_90",
+        "name": "餐厅_90",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_82",
+        "name": "写字楼_82",
+        "type": "office",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_41",
+        "name": "超市_41",
+        "type": "supermarket",
+        "distance": "2.00km"
+      }
+    ],
+    "node_98": [
+      {
+        "to": "node_27",
+        "name": "换电站_27",
+        "type": "battery_swap",
+        "distance": "1.41km"
+      },
+      {
+        "to": "node_86",
+        "name": "换电站_86",
+        "type": "battery_swap",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_76",
+        "name": "居民区_76",
+        "type": "residential",
+        "distance": "2.00km"
+      },
+      {
+        "to": "node_3",
+        "name": "超市_3",
+        "type": "supermarket",
+        "distance": "2.00km"
+      }
+    ],
+    "node_99": [
+      {
+        "to": "node_18",
+        "name": "药店_18",
+        "type": "pharmacy",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_45",
+        "name": "居民区_45",
+        "type": "residential",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_84",
+        "name": "餐厅_84",
+        "type": "restaurant",
+        "distance": "1.00km"
+      },
+      {
+        "to": "node_20",
+        "name": "居民区_20",
+        "type": "residential",
+        "distance": "2.00km"
+      }
+    ]
+  }
+}
