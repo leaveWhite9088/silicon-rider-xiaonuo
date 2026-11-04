@@ -1,4 +1,4 @@
-# 赛制与工具 · silicon-rider-xiaonuo v1.2
+# 赛制与工具 · silicon-rider-xiaonuo v1.3
 
 > 本文件是**给运行者/评审看的协议说明**；被测模型只拿到「一行观察 ↔ 一行工具调用」的交互循环。
 
@@ -64,7 +64,7 @@
 - **A30** 净利 / 锚值（`configs/benchmark.json`，默认 350；打穿锚值会报警并转人工复核）。
 - **B15** = 无效调用 5（失败 + 动作间同参数重复查询）+ **端到端**耗时 10。
 - **C25** = 准时率 9 + 状态一致性 8 + 路径效率 8。
-- **D30** = 匿名盲评包 × 3 位独立评审取中位；评委只拿 `leaderboard/blind/<pack_id>/` 路径，包内无模型名/A/B/C。
+- **D30** = 匿名盲评包 × 不固定数量的独立评审；评分通过 `judge_submit.py` 追加到中心日志 `leaderboard/reviews.jsonl`，`finalize.py` 按 mean/median 聚合。评委只拿 `leaderboard/blind/<pack_id>/` 路径，包内无模型名/A/B/C。
 
 ## 6. 种子与诚信
 
@@ -84,11 +84,15 @@ node tools/harness.mjs --model Demo-s1 --seed-index 1 --policy examples/policy-g
 # 评分（核对承诺）
 python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1
 
-# 匿名盲评包 → 填 D → 出榜
-python src/scoring/judge_pack.py --model Demo
-python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-       --seed-indexes 1,2,3 --d-file leaderboard/blind/<pack_id>/verdict.draft.json \
-       --blind-map leaderboard/verdicts/Demo.blind-map.json
+# 评委提交：每位评委每个 case 追加一条评分到中心日志
+python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case-id case-01 \
+       --judge-id <评委ID> --judge-model <评委模型> \
+       --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]"
+
+# 主控出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+python src/scoring/finalize.py --model Demo \
+       --review-log leaderboard/reviews.jsonl \
+       --d-aggregate mean --min-judges 1
 
 # 换批才需要重标锚值（本批固定种子，不换）
 node tools/bounds.mjs --seed-index 1

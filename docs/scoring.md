@@ -1,4 +1,4 @@
-# 计分规范 · v1.2
+# 计分规范 · v1.3
 
 脚本层 70 分（确定性）+ 决策层 30 分（评审）。实现见 `src/scoring/metrics.py`；
 常量集中在 `configs/benchmark.json → scoring`。
@@ -70,7 +70,8 @@ C3 只使用 pathEfficiency；不使用空驶率修正，emptyRatio 不参与评
 ## D 决策智能（30）
 
 `D = D1 挑单与收益取舍 11 + D2 组合与动态调整 10 + D3 风险权衡与班次管理 9`，
-由 judge_pack.py 生成的匿名盲评包交给 3 位互不可见的评审，按绝对锚点定级后取中位。评委只拿到 leaderboard/blind/<pack_id>/ 这一个目录路径；包内不含模型名、A/B/C、运行目录或种子明文。模型到 case_id 的私有映射由主控保管，不交给评委。
+由 judge_pack.py 生成的匿名盲评包交给**不固定数量**的独立评审。每位评委通过 `judge_submit.py` 提交，评分追加到中心日志 `leaderboard/reviews.jsonl`；评委只拿 `leaderboard/blind/<pack_id>/` 路径，不显示、也不得查看其他评委的评分。主控用 `review_merge.py` 或 `finalize.py --review-log ... --d-aggregate mean|median` 聚合 D；模型到 case_id 的私有映射由主控保管，不交给评委。
+- 中心日志每行记录：`review_id`、`created_at`、`judge_id`、`judge_model`、`pack_id`、`case_id`、`D1/D2/D3`、`evidence`、`note`。
 
 事实卡包含（脚本生成，不含净利，防结果光环）：
 
@@ -86,3 +87,5 @@ C3 只使用 pathEfficiency；不使用空驶率修正，emptyRatio 不参与评
 - 脚本层重跑零波动；唯一可能波动的 B2 现在取端到端，需在报告里同时给出驱动墙钟以便复核。
 - 多种子：对同一模型的 3 次运行取 **均值 ± 极差**（`src/scoring/aggregate.py`）。
 - D 盲评：评委只拿到 `leaderboard/blind/<pack_id>/` 匿名包路径；模型名、A/B/C、运行目录和私有映射都不交给评委。
+- 中心评审日志只追加、不手改；同一 `(pack_id, case_id, judge_id)` 聚合时保留最新一条，不同 case 可以有不同评委数。
+- 同一模型多个三轮批次：`finalize.py --model <名>` 自动发现所有 `<名>.*.blind-map.json` 和对应 run，按 run 合并；`verdict.summary` 记录总 run 数、已评分 run 数、评委提交数和累计模拟轮次。

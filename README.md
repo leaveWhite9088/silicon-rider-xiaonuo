@@ -2,7 +2,7 @@
 
 > **一句话**：让 AI 在会动的模拟城市里当 8 小时外卖骑手——在时间、电量、载重、时限，以及“不知道下一单从哪来”的约束下，把这一班的净利做到最大。
 
-模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.2` 赛制。
+模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.3` 赛制。
 
 ## 一局怎么跑
 
@@ -53,8 +53,10 @@
 ### D 决策智能（30）— 评“决策”
 
 - 唯一输入是 judge_pack.py 生成的**匿名盲评包目录**。评委只拿到 leaderboard/blind/<pack_id>/ 路径；包内不含模型名、A/B/C、运行目录或种子明文，模型到 case_id 的映射由主控私存。
-- 三个维度：**D1 挑单与收益取舍 11**、**D2 组合同送与动态调整 10**、**D3 风险权衡与班次管理 9**。
-- 3 位互不可见的裁判各评一遍取中位；某格极差 ≥3 级转仲裁。
+- 评委用 `judge_submit.py` 提交，评分追加到中心日志 `leaderboard/reviews.jsonl`；该脚本不显示其他评委分数，评委不得查看中心日志。评委人数不固定，可分批到位。
+- 主控用 `review_merge.py` 或 `finalize.py --review-log ... --d-aggregate mean|median` 聚合 D；每个 case 的评委数可不同。
+- 本单次模式允许执行者跑完 3 局后自行运行 `score_run.py --no-record` 和 `judge_pack.py`；最终 `finalize.py` 和排行榜仍由主控/裁判域完成。详见 `AGENTS.md` §0/§1。
+- 同一模型多个三轮批次：`finalize.py --model <名>` 会自动发现所有 `leaderboard/verdicts/<名>.*.blind-map.json` 和对应 run，按 run 合并；`summary` 记录 `runs_total / runs_scored / judge_reviews / rounds_total`。
 
 ## 谁起局
 
@@ -71,12 +73,20 @@ node tools/session.mjs act --session Demo-s1 '{"toolName":"move_to","parameters"
 # 或批量跑（写 policy，一条命令三局并发并评分）
 node tools/play.mjs --model Demo --policy examples/policy-greedy.mjs --seeds 1,2,3 --score
 
-# 之后生成匿名盲评包，交给裁判填 D，再出榜
-python src/scoring/judge_pack.py --model Demo
-# 输出 leaderboard/blind/<pack_id>/ 目录；只把这个目录给评委
-python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-       --seed-indexes 1,2,3 --d-file leaderboard/blind/<pack_id>/verdict.draft.json \
-       --blind-map leaderboard/verdicts/Demo.blind-map.json
+# 评委提交：每位评委每个 case 提交一次；不要查看中心日志
+python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case-id case-01 \
+  --judge-id <评委ID> --judge-model <评委模型> \
+  --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]" --note "最强反证"
+
+# 可选：先查看中心日志的合并结果
+python src/scoring/review_merge.py --log leaderboard/reviews.jsonl \
+  --out leaderboard/reviews.merged.json --aggregate mean
+
+# 主控出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+python src/scoring/finalize.py --model Demo \
+  --review-log leaderboard/reviews.jsonl \
+  --d-aggregate mean --min-judges 1
+# 部分 run 尚未评分时，可加 --allow-partial，只汇总已评分 run
 ```
 
 - **排名**：[`leaderboard/scores.md`](leaderboard/scores.md)
@@ -88,7 +98,7 @@ python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 run
 ```
 src/engine/     第三方 MIT 引擎（只读，许可见其中 LICENSE）
 src/client/     会话驱动：起局、观察、调用、结算
-src/scoring/    A/B/C 指标 + 事实卡、评分入口、汇总、出榜
+src/scoring/    A/B/C 指标 + 事实卡、中心评审日志、评分入口、汇总、出榜
 configs/        benchmark.json（唯一配置源）、seeds.commit.json（种子公开承诺）
 tools/          harness（一句话开跑）、种子、物理界、回放核验
 examples/       示例 policy（可直接改用）
@@ -99,4 +109,4 @@ leaderboard/    榜单与裁决
 
 ## 版本
 
-`xiaonuo-v1.2`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。
+`xiaonuo-v1.3`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。
