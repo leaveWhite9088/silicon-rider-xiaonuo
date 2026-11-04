@@ -110,14 +110,17 @@ node tools/session.mjs stop  --session deepseek-v4-s1
 # 1) 评分（每个种子跑一次；核对承诺 + 写事实卡 + 追加榜单摘要）
 python src/scoring/score_run.py runs/<名>-s1 <名> --seed-index 1
 
-# 2) 裁判素材包：打印 3 张事实卡 + 生成待填草稿
-python src/scoring/judge_pack.py --model <名> --print
-#    → 把 D1/D2/D3 填进 leaderboard/verdicts/<名>.draft.json（多位裁判就填多组）
+# 2) 生成匿名盲评包：输出一个 leaderboard/blind/<pack_id>/ 目录
+python src/scoring/judge_pack.py --model <名>
+#    → 只把这个目录路径交给评委；不要让评委看到仓库、模型名、A/B/C 或私有映射
+#    → 评委把 D1/D2/D3 填进 <包目录>/verdict.draft.json
 
 # 3) 出榜：核对承诺 → 回放核验 → 合成总分 → 写 leaderboard/scores.md
 python src/scoring/finalize.py --model <名> \
     --runs runs/<名>-s1 runs/<名>-s2 runs/<名>-s3 \
-    --seed-indexes 1,2,3 --d-file leaderboard/verdicts/<名>.draft.json
+    --seed-indexes 1,2,3 \
+    --d-file leaderboard/blind/<pack_id>/verdict.draft.json \
+    --blind-map leaderboard/verdicts/<名>.blind-map.json
 ```
 
 - **并发是安全的**：每局一个独立进程、独立输出目录、独立种子，互不共享状态。
@@ -167,14 +170,12 @@ python src/scoring/finalize.py --model <名> \
 
 ### 已知债务（别装作不存在）
 
-- `metrics.py` 的 `emptyRatio` 恒为 `None`（读的是驱动从不写的 `executed` 字段），C3 实际只看路径效率。
 - 端到端计时包含人为停顿；更精确的做法是 `Σ 每轮模型推理耗时`。
 
 ---
-
 ## 4. 如果你是「D 层评审」
 
-- **唯一输入**：`runs/<名>/factcard.md`。不要读净利，也不要读原始 trace（防结果光环）。
+- **唯一输入**：`leaderboard/blind/<pack_id>/` 盲评包目录里的 `case-*.md`。不要访问仓库、`runs/`、`leaderboard/` 其他目录，也不要看模型名、A/B/C、净利或原始 trace。
 - 按绝对锚点定级，**不与他人比较**；每格引用 ≥2 条卡面证据（如 `[E05]`、`[F01]`、`[I02]`）。
 - 三维度：**D1 挑单与收益取舍 11**、**D2 组合与动态调整 10**、**D3 风险权衡与班次管理 9**。
 - 必须写"最强反证"；同卡 3 位评审独立评取中位；极差 ≥3 级转仲裁。
@@ -193,6 +194,8 @@ python src/scoring/finalize.py --model <名> \
 | `runs/<名>/{factcard,评分}` | 评分脚本 | 评审、裁判域 |
 | `leaderboard/scores.md` | 评分脚本（裁判域） | 所有人 |
 | `seeds.json`（仓库外） | 主控 | **任何人都不该在选手可达目录** |
+| `leaderboard/blind/<pack_id>/` | `judge_pack.py` | 评委（只给这个目录路径） |
+| `leaderboard/verdicts/<名>.blind-map.json` | `judge_pack.py` | 主控 / `finalize.py`，**裁判不可见** |
 
 ## 6. 命令速查
 

@@ -2,7 +2,7 @@
 
 > **一句话**：让 AI 在会动的模拟城市里当 8 小时外卖骑手——在时间、电量、载重、时限，以及“不知道下一单从哪来”的约束下，把这一班的净利做到最大。
 
-模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.1` 赛制。
+模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.2` 赛制。
 
 ## 一局怎么跑
 
@@ -47,12 +47,12 @@
 ### C 操作质量（25）— 评“执行可靠性”
 
 - **C1 准时率（9）**：≥95% 满级；罚款 >15 元降 1 级、电量停摆降 2 级。评**守不守承诺**。
-- **C2 状态一致性（8）**：对不存在 / 已过期 / 不在手上的单操作就扣级。评**记不记得住手上有什么**。
-- **C3 路径质量（8）**：实际里程 ÷ Σ(每单取送距离)。≤0.75 满级、1.45 只有 5 级。评**路线省不省**（合单越准越高）。
+- **C2 状态一致性（8）**：对不存在 / 已过期 / 不在手上 / 地点不匹配的订单或换电操作扣级；引擎实际状态错误码已纳入。
+- **C3 路径质量（8）**：总行驶里程 ÷ Σ(每单取餐点→送餐点距离)；只使用该 pathEfficiency，空驶率不参与评分。
 
 ### D 决策智能（30）— 评“决策”
 
-- 唯一输入是脚本生成的**决策事实卡**（不含净利，防“赚得多 = 决策好”的结果光环）。
+- 唯一输入是 judge_pack.py 生成的**匿名盲评包目录**。评委只拿到 leaderboard/blind/<pack_id>/ 路径；包内不含模型名、A/B/C、运行目录或种子明文，模型到 case_id 的映射由主控私存。
 - 三个维度：**D1 挑单与收益取舍 11**、**D2 组合同送与动态调整 10**、**D3 风险权衡与班次管理 9**。
 - 3 位互不可见的裁判各评一遍取中位；某格极差 ≥3 级转仲裁。
 
@@ -71,10 +71,12 @@ node tools/session.mjs act --session Demo-s1 '{"toolName":"move_to","parameters"
 # 或批量跑（写 policy，一条命令三局并发并评分）
 node tools/play.mjs --model Demo --policy examples/policy-greedy.mjs --seeds 1,2,3 --score
 
-# 之后由裁判给 D、出榜——完整流程见 AGENTS.md 第 2 节
-python src/scoring/judge_pack.py --model Demo --print
+# 之后生成匿名盲评包，交给裁判填 D，再出榜
+python src/scoring/judge_pack.py --model Demo
+# 输出 leaderboard/blind/<pack_id>/ 目录；只把这个目录给评委
 python src/scoring/finalize.py --model Demo --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-       --seed-indexes 1,2,3 --d-file leaderboard/verdicts/Demo.draft.json
+       --seed-indexes 1,2,3 --d-file leaderboard/blind/<pack_id>/verdict.draft.json \
+       --blind-map leaderboard/verdicts/Demo.blind-map.json
 ```
 
 - **排名**：[`leaderboard/scores.md`](leaderboard/scores.md)
@@ -97,4 +99,4 @@ leaderboard/    榜单与裁决
 
 ## 版本
 
-`xiaonuo-v1.1`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。
+`xiaonuo-v1.2`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。

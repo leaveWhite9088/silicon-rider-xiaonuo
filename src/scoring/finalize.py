@@ -4,7 +4,9 @@
 用法（推荐，种子用预注册序号，明文由脚本自己读，人不接触）：
     python src/scoring/finalize.py --model Demo \
         --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
-        --seed-indexes 1,2,3 --d-file leaderboard/verdicts/Demo.draft.json
+        --seed-indexes 1,2,3 \
+        --d-file leaderboard/blind/<pack_id>/verdict.draft.json \
+        --blind-map leaderboard/verdicts/Demo.blind-map.json
 
 也可直接用明文/直接给分：
     ... --seeds 111,222,333 --d 21,22.5,23
@@ -14,7 +16,7 @@
 流程：
   1) 核对每个种子的承诺（sha256("sr:"+seed) == protocol.scene.seed_commit）
   2) 逐目录回放核验（tools/verify_replay.mjs），不一致直接拒绝出榜
-  3) 读 评分.json（A/B/C）+ 裁判 D（草稿里每位裁判 D1+D2+D3，多种子取中位）
+  3) 读 评分.json（A/B/C）+ 匿名盲评草稿（case_id 经 --blind-map 映射回运行目录；每位裁判 D1+D2+D3，多种子取中位）
   4) 每个种子总分 = A+B+C+D；跨种子取 均值 ± 极差
   5) 写 leaderboard/verdicts/<model>.json（审计留档）并追加 leaderboard/scores.md
 """
@@ -38,11 +40,21 @@ ap.add_argument("--seed-indexes", default=None, help="预注册序号，逗号�
 ap.add_argument("--seeds", default=None, help="明文种子，逗号分隔（与 --seed-indexes 二选一）")
 ap.add_argument("--d", default=None, help="每个种子一个 D，逗号分隔")
 ap.add_argument("--d-file", default=None, help="裁判草稿 JSON（judge_pack.py 生成，填好 D1/D2/D3）")
+ap.add_argument("--blind-map", default=None, help="盲评私有映射 JSON（judge_pack.py 生成；草稿用 case_id 时必填）")
 ap.add_argument("--no-replay", action="store_true", help="跳过回放核验（不建议）")
 ap.add_argument("--dry-run", action="store_true", help="只打印，不写榜")
 a = ap.parse_args()
 
 runs = [Path(p).resolve() for p in a.runs]
+case_for_run = {}
+blind_pack_id = None
+map_file = Path(a.blind_map) if a.blind_map else (VERDICTS / f"{a.model}.blind-map.json")
+if map_file.exists():
+    bm = json.loads(map_file.read_text(encoding="utf-8"))
+    blind_pack_id = bm.get("pack_id")
+    for cid, meta in (bm.get("cases") or {}).items():
+        if meta.get("run"):
+            case_for_run[meta["run"]] = cid
 
 # ---- 种子 ----
 if a.seed_indexes:
@@ -64,29 +76,47 @@ else:
 # ---- 裁判分 ----
 if a.d_file:
     draft = json.loads(Path(a.d_file).read_text(encoding="utf-8"))
-    by_run = {s["run"]: s for s in draft.get("seeds", [])}
+    draft_pack_id = draft.get("pack_id")
+    if draft_pack_id and blind_pack_id and draft_pack_id != blind_pack_id:
+        print(f"盲评草稿 pack_id={draft_pack_id} 与私有映射 pack_id={blind_pack_id} 不一致")
+        sys.exit(1)
+    draft_cases = draft.get("cases") or draft.get("seeds", [])
+    by_run = {s.get("run"): s for s in draft_cases if s.get("run")}
+    by_case = {s.get("case_id"): s for s in draft_cases if s.get("case_id")}
     ds = []
+    case_ids = []
     for r in runs:
-        item = by_run.get(r.name)
+        cid = case_for_run.get(r.name)
+        item = by_run.get(r.name) or (by_case.get(cid) if cid else None)
         if not item:
-            print(f"草稿里没有 {r.name}"); sys.exit(1)
+            print(f"草稿里没有 {r.name}" + (f"（期望 case_id={cid}）" if cid else "；如果是盲评草稿，请给 --blind-map"))
+            sys.exit(1)
         totals = []
         for j in item.get("judges", []):
             if all(isinstance(j.get(k), (int, float)) for k in ("D1", "D2", "D3")):
+                if not (0 <= j["D1"] <= 11 and 0 <= j["D2"] <= 10 and 0 <= j["D3"] <= 9):
+                    print(f"{r.name} 的 D 分超出范围：D1≤11 / D2≤10 / D3≤9")
+                    sys.exit(1)
                 totals.append(j["D1"] + j["D2"] + j["D3"])
         if not totals:
-            print(f"{r.name} 的 D 还没填（D1/D2/D3）"); sys.exit(1)
+            print(f"{r.name} 的 D 还没填（D1/D2/D3）")
+            sys.exit(1)
+        if len(totals) < 3:
+            print(f"!! {r.name} 只有 {len(totals)} 位有效评委；正式成绩建议 3 位独立评委")
         ds.append(round(statistics.median(totals), 2))
+        case_ids.append(item.get("case_id") or cid)
 elif a.d:
     ds = [float(x) for x in a.d.split(",")]
+    case_ids = [None] * len(runs)
 else:
-    print("必须给 --d 或 --d-file"); sys.exit(1)
+    print("必须给 --d 或 --d-file")
+    sys.exit(1)
 
 if not (len(runs) == len(seeds) == len(ds)):
     print(f"--runs / 种子 / D 数量必须一致（现在 {len(runs)}/{len(seeds)}/{len(ds)}）"); sys.exit(1)
 
 rows, errors = [], []
-for run, seed, d in zip(runs, seeds, ds):
+for run, seed, d, case_id in zip(runs, seeds, ds, case_ids):
     name = run.name
     missing = [f for f in ("protocol.json", "result.json", "评分.json") if not (run / f).exists()]
     if missing:
@@ -111,7 +141,7 @@ for run, seed, d in zip(runs, seeds, ds):
 
     A, B, C = sc.get("A_outcome"), sc.get("B_efficiency"), sc.get("C_quality")
     rows.append({
-        "run": name, "seed_commit": str(commit)[:12], "seed_verified": True, "replay_ok": replay_ok,
+        "run": name, "case_id": case_id, "seed_commit": str(commit)[:12], "seed_verified": True, "replay_ok": replay_ok,
         "profit": round(float((res.get("score") or {}).get("totalProfit") or 0), 2),
         "completed": (res.get("score") or {}).get("completedOrders"),
         "endToEndMin": round(float(res.get("endToEndSeconds") or 0) / 60, 1),
@@ -141,7 +171,7 @@ lines += ["",
           f"**均值 ± 极差**：净利 {mP:.1f} ±{rP:.1f}｜A {mA:.2f} ±{rA:.2f}｜B {mB:.2f} ±{rB:.2f}"
           f"｜C {mC:.2f} ±{rC:.2f}｜D {mD:.2f} ±{rD:.2f}｜**总分 {mT:.2f} ±{rT:.2f}**", "",
           f"- 口径：`{(json.loads((runs[0] / 'protocol.json').read_text(encoding='utf-8')) or {}).get('version')}`；"
-          f"种子数 {len(rows)}；A/B/C 由 `score_run.py` 计算，D 由裁判按事实卡给出（多位裁判取中位）。"]
+          f"种子数 {len(rows)}；A/B/C 由 `score_run.py` 计算，D 由裁判按匿名事实卡给出（多位裁判取中位）。"]
 text = "\n".join(lines)
 print(text)
 
@@ -152,6 +182,7 @@ if a.dry_run:
 VERDICTS.mkdir(parents=True, exist_ok=True)
 (VERDICTS / f"{a.model}.json").write_text(json.dumps({
     "model": a.model, "finalized_at": datetime.datetime.now().isoformat(timespec="seconds"),
+    "blind_pack_id": blind_pack_id,
     "runs": rows,
     "mean": {"profit": mP, "A": mA, "B": mB, "C": mC, "D": mD, "total": mT},
     "range_half": {"profit": rP, "A": rA, "B": rB, "C": rC, "D": rD, "total": rT},
