@@ -87,4 +87,4 @@ C3 只使用 pathEfficiency；不使用空驶率修正，emptyRatio 不参与评
 - 多种子：对同一模型的 3 次运行取 **均值 ± 极差**（`src/scoring/aggregate.py`）。
 - D 盲评：评委只拿到 `leaderboard/blind/<pack_id>/` 匿名包路径；模型名、A/B/C、运行目录和私有映射都不交给评委。
 - 中心评审日志只追加、不手改；同一 `(pack_id, case_id, judge_id)` 聚合时保留最新一条，不同 case 可以有不同评委数。
-- 同一模型多个三轮批次：`finalize.py --model <名>` 自动发现所有 `<名>.*.blind-map.json` 和对应 run，按 run 合并；`verdict.summary` 记录总 run 数、已评分 run 数、评委提交数和累计模拟轮次。
+- 同一模型多个三轮批次：`finalize.py --model <名>` 按**规范模型 ID**自动发现所有映射和对应 run，按 run 合并；末尾批次后缀 `-h1` / `-s1` 等会归并，`（Max）` 等推理强度标记保留为独立模型；`verdict.summary` 记录总 run 数、已评分 run 数、评委提交数和累计模拟轮次。

@@ -6,7 +6,7 @@
 
 ## 0. 先分清：你在「选手域」还是「评委/汇总」
 
-这不是两个人，而是**两个信任域**。同一个 agent 可以既当选手又当开发者；本单次模式允许执行者运行评分/打包脚本，但**最终出榜和评委角色仍不能自己兼任**。
+这不是两个人，而是**两个信任域**。同一个 agent 可以既当选手又当开发者；本单次模式允许执行者运行**官方评分/打包脚本**，但**最终出榜和评委角色仍不能自己兼任**。
 
 > **当前采用：单次执行者收尾模式。**
 > 执行者（被测模型）跑完 3 个种子后，可以自行运行 `score_run.py --no-record` 生成 `评分.json` / `factcard.md`，并运行 `judge_pack.py` 生成匿名盲评包。本模式按单次会话使用，不要求跨批次复用或防作弊审计。
@@ -14,7 +14,7 @@
 
 | 信任域 | 典型承担者 | 可以做什么 | 绝对不能做什么 |
 | --- | --- | --- | --- |
-| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、调工具、写脚本代打、读观察、规划路线；跑完 3 局后运行 `score_run.py --no-record` 和 `judge_pack.py` | 决定种子、运行 `finalize.py`、写排行榜/最终裁决、修改评分/打包脚本 |
+| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、逐轮手动调用工具、读观察、规划路线；跑完 3 局后运行官方 `score_run.py --no-record` 和 `judge_pack.py` | 决定种子、编写或运行代打脚本、运行 `finalize.py`、写排行榜/最终裁决、修改评分/打包脚本 |
 | **评委/汇总** | 独立评委 / 运行汇总脚本的人 | 看匿名包、提交 D、评委完成后手动汇总入榜 | 替选手操作工具 |
 
 ### 三种部署形态，你是哪一种？
@@ -25,13 +25,18 @@
 | **B. 双代理**（一个进程当运行器，另一个模型只回 JSON） | 运行器 | 运行器 | 运行器 | §1 或 §2 |
 | **C. 官方运行器**（模型只有 API，没有 shell） | 运行器 | 运行器 | 运行器 | §1 |
 
-**单代理形态的唯一硬约束（三条，缺一即成绩无效）**：
+**单代理形态的硬约束（缺一即成绩无效）**：
 
 1. **种子不在你手里**：由评测环境提供；你只拿到"第几个种子"或一个数字，事后核对承诺。
 2. **`t0` 由你在开始工作前记录**：可以直接传 `--t0`，也可以让驱动在进程启动时自动记录；两者都是有效的 B2 起点。
 3. **最终出榜在评委完成后手动做**：本单次模式允许你运行 `score_run.py --no-record` 和 `judge_pack.py`；`finalize.py`、`leaderboard/scores.md` 和最终裁决等评委提交后再手动运行。
 
 > 本单次模式没有额外协调角色：选手先做，评委后做，最后手动运行汇总脚本。
+
+> **本版玩法硬规则：只允许逐轮手动玩。**
+> 不得编写、生成、修改或运行任何自行编写的脚本，包括策略脚本、代打脚本、自动决策程序、自动工具调用循环；不得使用 `tools/play.mjs --policy`、`tools/harness.mjs --policy` 或其他自动化方式代打。
+> 每一次行动都必须由你读取上一条观察后手动决定，并单独发起一次工具调用；违反此规则的 run 成绩无效。
+> 官方 `score_run.py`、`judge_pack.py`、`finalize.py` 等评分/打包工具不属于代打，按本文规定流程运行即可。
 
 ---
 
@@ -55,13 +60,13 @@ node tools/session.mjs stop  --session deepseek-v4-s1
 
 - 第 2、3 局同样起，换成 `-s2 / -s3` 和 `--seed-index 2 / 3`；**三个会话可并行**。
 - 每次 `act` 返回新观察 + `advanced`（本次推进多少分钟）。返回 `ended: true` 就是 14:00 收工了。
-- **跑完 3 局后按下方「执行者收尾」运行脚本评分和匿名打包**；不要运行 `finalize.py` 或写排行榜。
+- **跑完 3 局后按下方「执行者收尾」运行官方评分和匿名打包脚本**；不要运行 `finalize.py` 或写排行榜。
 
-- 想一次跑完（把策略写成代码）也可：`node tools/play.mjs --model <名> --policy <policy.mjs> --seeds 1,2,3`。
+- **正式玩法只允许逐轮手动操作，禁止使用 `play.mjs --policy` / `harness --policy` 或任何策略脚本一次跑完。** 这两个入口仅供开发调试，其产物不能作为正式成绩。
 
 ### 跑完三局后：执行者收尾（本模式）
 
-本单次模式要求执行者自己完成脚本评分和匿名打包，不要求跨批次复用：
+本单次模式要求执行者自己完成官方脚本评分和匿名打包，不要求跨批次复用：
 
 1. 对 3 个 run 分别生成 A/B/C 和事实卡（不写排行榜）：
 
@@ -80,7 +85,7 @@ python src/scoring/judge_pack.py --model <名>
 输出：
 
 - `leaderboard/blind/<pack_id>/`：交给评委的唯一路径；
-- `leaderboard/verdicts/<名>.<pack_id>.blind-map.json`：私有映射，不交给评委。
+- `leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json`：私有映射，不交给评委。
 
 3. 把 `leaderboard/blind/<pack_id>/` 路径交给评委；**不要**把 `blind-map.json`、`reviews.jsonl`、`runs/` 或 A/B/C 交给评委。
 
@@ -117,8 +122,9 @@ python src/scoring/judge_pack.py --model <名>
 
 ### 允许 / 禁止
 
-- ✅ 任意顺序使用 13 个工具；合单、拒单、提前换电、等好单；**可以写脚本代打**（代价是端到端时间，直接压低 B2）。
+- ✅ 任意顺序使用 13 个工具；合单、拒单、提前换电、等好单；但每一步都必须读取当前观察后手动决定并逐轮调用。
 - ❌ 读或推断**种子**（`$SR_SEEDS` 指向的明文、`protocol.json` 的 `seed_commit`、其他 `runs/*/trace.jsonl`）；❌ 推演/重现未来订单流；❌ 改引擎/驱动；❌ 伪造轨迹；❌ 写结算或榜单。
+- ❌ 编写或运行任何自行编写的策略/代打脚本、自动决策程序或自动工具调用循环；❌ 使用 `play.mjs --policy` / `harness --policy` 或其他自动化方式代打（正式成绩无效；官方评分/打包脚本除外）。
 - 判罚：种子承诺不匹配 = 作废；轨迹会**用原引擎逐条重放**，结算必须一致。
 
 ### 打法提示（经验，不是规则）
@@ -136,7 +142,7 @@ python src/scoring/judge_pack.py --model <名>
 
 ### 标准流程（评委与手动汇总）
 
-执行者怎么玩见 §1（session 或 policy 都可以）。评委只评分；汇总脚本在评委提交后手动运行。
+执行者怎么玩见 §1（只能逐轮手动玩；禁止 policy/脚本代打）。评委只评分；汇总脚本在评委提交后手动运行。
 
 > 本单次执行者收尾模式下，步骤 1（`score_run.py`）和步骤 2（`judge_pack.py`）可由执行者自己运行；评委提交后由你手动运行 `finalize.py` 出榜。
 
@@ -150,7 +156,7 @@ python src/scoring/judge_pack.py --model <名>
 #    → 评委用 judge_submit.py 按 case 提交；评分追加到中心日志
 #    → 评委不得查看 leaderboard/reviews.jsonl 或其他评委评分
 
-# 3) 出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+# 3) 出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
 #    不填 --runs / --blind-map 时，会按 --model 自动发现
 python src/scoring/finalize.py --model <名> \
     --review-log leaderboard/reviews.jsonl \
@@ -180,7 +186,7 @@ python src/scoring/finalize.py --model <名> \
 | 只有 `trace.jsonl`，没有 `result.json` | 驱动被强杀；重跑 |
 | `seed_verified=false` | 种子传错 → 该次作废 |
 | `A_out_of_range=true` | 净利打穿锚值 → 人工复核，考虑重标锚 |
-| 事实卡标"疑似脚本代打" | 中位调用间隔 <300ms；本版允许，但已计入端到端 |
+| 事实卡标"疑似脚本代打" | 中位调用间隔 <300ms；本版禁止脚本代打，该次成绩无效，需人工复核 |
 | 分数异常偏低 | 看 B2 是否被端到端拖累、C1 准时率、C3 绕路 |
 
 ---
@@ -230,11 +236,11 @@ python src/scoring/finalize.py --model <名> \
 
 ### 4.2 同一模型多个三轮
 
-- 每跑一个三轮批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/verdicts/<模型名>.<pack_id>.blind-map.json`。
-- 汇总时只按 `--model <模型名>`：`finalize.py` 自动发现该模型的所有 `<模型名>.*.blind-map.json` 和对应 run，按 run 合并计算均值。
-- 也可以用 `--runs` / `--blind-map` 显式指定要汇总的 run 或映射。
+- 每跑一个三轮批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json`。
+- 汇总按**规范模型 ID**：末尾批次后缀（如 `-h1` / `-s1`）会归并，`（Max）` 等推理强度标记保留；无法自动识别时用 `--model-id` 显式指定。
+- `finalize.py` 自动发现该规范模型 ID 的所有映射和对应 run，按 run 合并计算均值；也可以用 `--runs` / `--blind-map` 显式指定。
 - 默认要求所有自动发现的 run 都有 D 评分；加 `--allow-partial` 可只汇总已有评分的 run。
-- `leaderboard/verdicts/<模型名>.json` 的 `summary` 会记录：`runs_total`（总 run 数）、`runs_scored`（已评分 run 数）、`judge_reviews`（评委提交条数）、`rounds_total`（所有 run 的模拟轮次总和）。
+- `leaderboard/verdicts/<规范模型ID>.json` 的 `summary` 会记录：`runs_total`（总 run 数）、`runs_scored`（已评分 run 数）、`judge_reviews`（评委提交条数）、`rounds_total`（所有 run 的模拟轮次总和）。
 **历史批次记录（旧槽位流程，仅留档）**：
 
 - 2026-11-04 `glm-5.3-flash` / `deepseek-v4.1-flash` 各 3 种子批次：**评委 1（槽位 0）** 已由执行代理完成，
@@ -256,7 +262,7 @@ python src/scoring/finalize.py --model <名> \
 | `leaderboard/scores.md` | 评分脚本（评分/汇总） | 所有人 |
 | `seeds.json`（仓库外） | 评测环境 | **任何人都不该在选手可达目录** |
 | `leaderboard/blind/<pack_id>/` | `judge_pack.py` | 评委（只给这个目录路径） |
-| `leaderboard/verdicts/<名>.<pack_id>.blind-map.json` | `judge_pack.py` | 运行 finalize 的人 / `finalize.py`，**评委不可见** |
+| `leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json` | `judge_pack.py` | 运行 finalize 的人 / `finalize.py`，**评委不可见** |
 | `leaderboard/reviews.jsonl` | `judge_submit.py` | 运行汇总的人 / `review_merge.py` / `finalize.py`，**评委不可读** |
 | `src/scoring/judge_submit.py` | 开发者 | 评委提交入口（只追加、不回显他人分数） |
 | `src/scoring/review_merge.py` | 开发者 | 汇总中心日志 |

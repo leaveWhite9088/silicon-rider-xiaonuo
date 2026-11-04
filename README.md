@@ -57,7 +57,7 @@
 - 评委用 `judge_submit.py` 提交，评分追加到中心日志 `leaderboard/reviews.jsonl`；该脚本不显示其他评委分数，评委不得查看中心日志。评委人数不固定，可分批到位。
 - 汇总时用 `review_merge.py` 或 `finalize.py --review-log ... --d-aggregate mean|median` 聚合 D；每个 case 的评委数可不同。
 - 本单次模式允许执行者跑完 3 局后自行运行 `score_run.py --no-record` 和 `judge_pack.py`；评委完成后由你手动运行 `finalize.py` 汇总。详见 `AGENTS.md` §0/§1。
-- 同一模型多个三轮批次：`finalize.py --model <名>` 会自动发现所有 `leaderboard/verdicts/<名>.*.blind-map.json` 和对应 run，按 run 合并；`summary` 记录 `runs_total / runs_scored / judge_reviews / rounds_total`。
+- 同一模型多个三轮批次：`finalize.py --model <名>` 会按**规范模型 ID**自动发现所有映射和对应 run，按 run 合并；末尾批次后缀 `-h1` / `-s1` 等会归并，`（Max）` 等推理强度标记保留为独立模型。`summary` 记录 `runs_total / runs_scored / judge_reviews / rounds_total`。
 
 ## 谁起局
 
@@ -93,7 +93,7 @@ python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case
 python src/scoring/review_merge.py --log leaderboard/reviews.jsonl \
   --out leaderboard/reviews.merged.json --aggregate mean
 
-# 手动汇总出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+# 手动汇总出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
 python src/scoring/finalize.py --model Demo \
   --review-log leaderboard/reviews.jsonl \
   --d-aggregate mean --min-judges 1

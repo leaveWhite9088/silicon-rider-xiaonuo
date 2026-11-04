@@ -89,7 +89,7 @@ python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case
        --judge-id <评委ID> --judge-model <评委模型> \
        --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]"
 
-# 手动汇总出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+# 手动汇总出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
 python src/scoring/finalize.py --model Demo \
        --review-log leaderboard/reviews.jsonl \
        --d-aggregate mean --min-judges 1
