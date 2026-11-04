@@ -29,3 +29,7 @@ leaderboard/verdicts/*.draft.json
 leaderboard/reviews.jsonl
 leaderboard/reviews.jsonl.lock
 leaderboard/reviews.merged.json
+
+# 本地开发/诊断脚本（临时）
+.dev/
+
