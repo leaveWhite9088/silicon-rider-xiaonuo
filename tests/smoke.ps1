@@ -1,6 +1,8 @@
 # 端到端冒烟：跑一班（固定 4 行）→ 断言产物 → 评分（不写排行榜）→ 清理
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+python (Join-Path $root 'tests\scoring_units.py')
+if ($LASTEXITCODE -ne 0) { throw '评分单元测试失败' }
 $client = Join-Path $root 'src\client\rider_client.mjs'
 $scorer = Join-Path $root 'src\scoring\score_run.py'
 $out = Join-Path $root 'tests\_tmp\smoke'

@@ -60,7 +60,7 @@ if seed is not None:
 
 m = metrics.analyze_work(folder)
 s = metrics.score_work(m)
-(folder / "factcard.md").write_text(metrics.factcard(a.model, a.model, m), encoding="utf-8")
+(folder / "factcard.md").write_text(metrics.factcard(m), encoding="utf-8")
 out = dict(s)
 out["seed_commit"] = commit
 out["seed_verified"] = seed_ok

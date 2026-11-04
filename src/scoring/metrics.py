@@ -20,6 +20,9 @@ QUERY_TOOLS = {"get_my_status", "search_nearby_orders", "search_nearby_battery_s
                "get_location_info", "calculate_distance", "estimate_time", "get_map", "help"}
 ACTION_TOOLS = {"accept_order", "move_to", "pickup_food", "deliver_food", "swap_battery", "wait"}
 
+STATE_ERROR_CODES = {"INVALID_ORDER", "ORDER_NOT_FOUND", "NOT_FOUND", "ORDER_NOT_CARRIED", "ORDER_NOT_PICKED_UP", "NOT_PICKED_UP", "WRONG_LOCATION", "NOT_AT_SWAP_STATION", "ALREADY_DELIVERED", "INVALID_STATE"}
+CAPACITY_ERROR_CODES = {"CAPACITY_EXCEEDED", "WEIGHT_EXCEEDED", "OVERLOAD", "WEIGHT_LIMIT", "BATTERY_LOW", "NO_BATTERY"}
+
 
 # 计分常量：集中在 configs/benchmark.json → scoring；缺省值 = 默认锚 350 + 标准分档
 SCORING = {}
@@ -62,6 +65,13 @@ def parse_trace(work: Path):
             elif t == "initial":
                 initial = o
     return tools, models_n, ticks, initial
+
+
+def classify_failed_calls(failed):
+    """按引擎实际错误码拆分状态类与容量类失败。"""
+    state_err = [f for f in failed if f.get("code") in STATE_ERROR_CODES]
+    cap_err = [f for f in failed if f.get("code") in CAPACITY_ERROR_CODES]
+    return state_err, cap_err
 
 
 def analyze_work(work: Path):
@@ -115,12 +125,12 @@ def analyze_work(work: Path):
     m["nTicks"] = len(ticks)
 
     # ---------- 失败分类（状态一致性证据） ----------
-    state_err = [f for f in failed if f["code"] in ("INVALID_ORDER", "ORDER_NOT_FOUND", "NOT_FOUND",
-                                                   "ALREADY_DELIVERED", "NOT_PICKED_UP", "INVALID_STATE")]
-    cap_err = [f for f in failed if f["code"] in ("OVERLOAD", "WEIGHT_LIMIT", "BATTERY_LOW", "NO_BATTERY")]
+    state_err, cap_err = classify_failed_calls(failed)
     m["state_errors"] = len(state_err)
     m["capacity_errors"] = len(cap_err)
     m["other_errors"] = len(failed) - len(state_err) - len(cap_err)
+    m["state_error_codes"] = sorted({f["code"] for f in state_err if f.get("code")})
+    m["capacity_error_codes"] = sorted({f["code"] for f in cap_err if f.get("code")})
 
     # ---------- 电量管理 ----------
     swaps, min_battery, stall = [], 999.0, 0
@@ -406,40 +416,31 @@ def c2_level(m):
 
 
 def c3_level(m):
-    """C3 路径质量（0-10）：引擎 pathEfficiency + 空驶率修正。
+    """C3 路径质量（0-10）：只看 pathEfficiency。
 
-    阈值按真实轨迹重新标定（合单后该比值天然 < 1，旧阈值 1.10 会让"只要合单就满级"）：
-      0.75 以下=9（优秀合单）　0.90=8　1.05=7　1.20=6　1.45=5（不合单约 1.3–1.5）
-    参考标定：合单良好的班次 0.70–0.95；单跑一单单的班次 1.34–1.50。
+    pathEfficiency = 总行驶距离 / 已完成订单的取餐点→送餐点距离之和。
+    本版明确不使用空驶率修正。
     """
     pe = m.get("pathEff")
     if pe is None:
         return None
     if pe <= 0.75:
-        lv = 9
-    elif pe <= 0.90:
-        lv = 8
-    elif pe <= 1.05:
-        lv = 7
-    elif pe <= 1.20:
-        lv = 6
-    elif pe <= 1.45:
-        lv = 5
-    elif pe <= 1.80:
-        lv = 4
-    elif pe <= 2.40:
-        lv = 3
-    elif pe <= 3.50:
-        lv = 2
-    else:
-        lv = 1
-    er = m.get("emptyRatio")
-    if er is not None:
-        if er > 0.45:
-            lv -= 1
-        elif er < 0.15:
-            lv = min(9, lv + 1)
-    return max(0, min(9, lv))
+        return 9
+    if pe <= 0.90:
+        return 8
+    if pe <= 1.05:
+        return 7
+    if pe <= 1.20:
+        return 6
+    if pe <= 1.45:
+        return 5
+    if pe <= 1.80:
+        return 4
+    if pe <= 2.40:
+        return 3
+    if pe <= 3.50:
+        return 2
+    return 1
 
 
 # ---------------- 事实卡 ----------------
@@ -450,9 +451,13 @@ def fmt_time(minute):
     return f"{int(minute//60):02d}:{int(minute%60):02d}"
 
 
-def factcard(aid, name_hidden, m):
+def factcard(m, case_id=None):
+    """生成匿名决策事实卡；不写模型名。"""
     L = []
-    L.append(f"# 决策事实卡 {aid}")
+    title = "# 决策事实卡"
+    if case_id:
+        title += f" {case_id}"
+    L.append(title)
     L.append("")
     L.append("## 班次总览")
     L.append(f"- 结束方式：{m['termination']}；结束时刻 {fmt_time(m.get('endMinute'))}（班次 06:00–14:00），剩余 {None if m.get('remainingMin') is None else round(m['remainingMin'],1)} 分钟，结束时在途订单 {m.get('carryingAtEnd')} 单，电量 {None if m.get('endBattery') is None else round(m['endBattery'],1)}%")
@@ -461,7 +466,7 @@ def factcard(aid, name_hidden, m):
     L.append(f"- 行动量：工具调用 {m.get('calls')} 次（失败 {m.get('failed')}，其中状态类 {m.get('state_errors')}、容量类 {m.get('capacity_errors')}、其他 {m.get('other_errors')}；动作间同参数重复查询 {m.get('repeated')}），接单 {m.get('nAccepts')} 次（成功 {m.get('nAcceptOK')}），换电 {m.get('swaps')} 次，最低电量 {m.get('min_battery')}%")
     L.append(f"- 调用节奏：中位调用间隔 {m.get('medianCallGapMs')} ms" + ("（<300ms，疑似脚本代打）" if m.get('suspectScript') else ""))
     L.append(f"- 节奏：班中新单到达 {m.get('nTicks')} 波；查询类调用 {m.get('nQueries')} 次，平均每次成功接单前有 {m.get('queriesPerAccept')} 次查询")
-    L.append(f"- 路线：总行驶 {None if m.get('totalDistance') is None else round(m['totalDistance'],1)}，同批任务理论最优 {None if m.get('optimalDistance') is None else round(m['optimalDistance'],1)}（路径效率 {None if m.get('pathEff') is None else round(m['pathEff'],2)}），空驶距离占比 {None if m.get('emptyRatio') is None else round(m['emptyRatio'],3)}，多单同送交付占比 {m.get('batchRate')}（送单 {len(m.get('deliverEvents') or [])} 次，其中携带≥2单 {m.get('multiDeliveries')} 次）")
+    L.append(f"- 路线：总行驶 {None if m.get('totalDistance') is None else round(m['totalDistance'],1)}，已完成订单取送距离之和 {None if m.get('optimalDistance') is None else round(m['optimalDistance'],1)}，**路径效率 = 总行驶距离 / 已完成订单取送距离之和 = {None if m.get('pathEff') is None else round(m['pathEff'],2)}**（C3 唯一指标，不使用空驶率修正）；多单同送交付占比 {m.get('batchRate')}（送单 {len(m.get('deliverEvents') or [])} 次，其中携带≥2单 {m.get('multiDeliveries')} 次）")
     L.append(f"- 订单履约：接单后整班从未处理（死单）{m.get('nDead')} 单" + (f"，最长挂单 {m.get('maxCarriedMinutes')} 分钟" if m.get('nDead') else "") + f"；接单→送达超出引擎估计时限 {m.get('nSlow')} 单" + (f"（最大超出 {m['slowOrders'][0]['over']} 分钟）" if m.get('nSlow') else "") + f"；收工时在途未送 {m.get('carryingAtEnd')} 单")
     L.append("")
     L.append("## 接单决策明细（E行：每行一次接单）")
@@ -547,7 +552,7 @@ def main():
             scores[p.name] = {"error": repr(e)}
             continue
         scores[p.name] = score_work(m)
-        cards[p.name] = factcard(p.name, p.name, m)
+        cards[p.name] = factcard(m)
     (OUT / "script_scores.json").write_text(json.dumps(scores, ensure_ascii=False, indent=1), encoding="utf-8")
     for name, card in cards.items():
         (OUT / "factcards" / f"{name}.md").write_text(card, encoding="utf-8")
