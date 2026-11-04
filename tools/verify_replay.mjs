@@ -37,6 +37,10 @@ if (quiet) console.log = () => {};
 const sim = new Simulator({ seed, duration: sc.duration ?? 480, mapSize: sc.map_size || 'large', baseOrderFrequency: 5 });
 sim.setStatus('running');
 
+// 订单分布改造（v1.4）：与 rider_client 共用同一模块与同一配置，保证回放一致
+const { createDistribution } = await import(pathToFileURL(path.join(ROOT, 'src', 'client', 'order_distribution.mjs')).href);
+const DIST = createDistribution({ nodes: sim.getNodes(), seed, config: proto.distribution || {} });
+
 let nextArrival = sim.getCurrentTime() + INT;
 function spawnDue() {
   if (ARRIVAL !== 'sim_time') return;
@@ -45,7 +49,7 @@ function spawnDue() {
   let n = 0;
   while (real >= nextArrival && n < 200) {
     clock.currentTime = nextArrival;      // 出生时间 = 边界时刻
-    sim.advanceSimulation();
+    DIST.spawnBatch(sim, nextArrival);
     nextArrival += INT;
     n++;
   }
@@ -78,7 +82,7 @@ for (const rec of calls) {
     try { sim.orderGenerator.removeExpiredOrders(sim.getCurrentTime()); } catch { }
     spawnDue();
   } else if (rounds % RT === 0 && !sim.shouldTerminate()) {
-    sim.advanceSimulation();
+    DIST.spawnBatch(sim, sim.getCurrentTime());
   }
   if (sim.shouldTerminate()) break;
 }

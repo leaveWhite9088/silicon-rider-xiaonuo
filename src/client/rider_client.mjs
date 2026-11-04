@@ -90,6 +90,10 @@ function printObs(s) {
 }
 const wfile = obj => fs.appendFileSync(path.join(OUT, 'trace.jsonl'), JSON.stringify(obj) + '\n');
 
+// 订单分布改造（v1.4）：午高峰 + 空间聚簇；不改引擎，客户端后处理
+const { createDistribution } = await import(pathToFileURL(path.join(HERE, 'order_distribution.mjs')).href);
+const DIST = createDistribution({ nodes: sim.getNodes(), seed: SEED, config: CFG.distribution || {} });
+
 // ---- 新单到达：按模拟时间 ----
 let nextArrival = sim.getCurrentTime() + ARRIVAL_MIN;
 function spawnDue() {
@@ -100,7 +104,7 @@ function spawnDue() {
   const real = clock.getCurrentTime();
   while (real >= nextArrival && n < 200) {
     clock.currentTime = nextArrival;   // 到点就生成：出生时间 = 边界时刻（不是动作结束时刻）
-    sim.advanceSimulation();
+    DIST.spawnBatch(sim, nextArrival); // 午高峰倍率 + 空间聚簇（客户端后处理，不改引擎）
     nextArrival += ARRIVAL_MIN;
     n++;
   }
@@ -193,7 +197,7 @@ for await (const line of rl) {
   printObs(after);
   if (ARRIVAL === 'rounds' && rounds % ROUND_TICK === 0 && !after.ended) {
     const bIds = new Set(sim.getAvailableOrders().map(o => o.id));
-    sim.advanceSimulation();
+    DIST.spawnBatch(sim, sim.getCurrentTime());
     const fresh = sim.getAvailableOrders().filter(o => !bIds.has(o.id)).map(o => o.id);
     arrivalBatches++;
     wfile({ type: 'tick', round: rounds, batches: 1, minute: +sim.getCurrentTime().toFixed(2), newOrders: fresh });
@@ -219,6 +223,7 @@ fs.writeFileSync(path.join(OUT, 'protocol.json'), JSON.stringify({
   scene: { level: '1', duration: SC.duration_min ?? 480, map_size: SC.map_size ?? 'large',
            seed_commit: COMMIT, seed_revealed: false },
   arrival: { mode: ARRIVAL, interval_min: ARRIVAL_MIN, round_tick: ROUND_TICK, batches: arrivalBatches },
+  distribution: DIST.config,
   clock: { end_minute: SC.end_minute ?? 840, cap: CLOCK_CAP, overrun: fin.minute > (SC.end_minute ?? 840) + 1e-9, rejected },
   timing: {
     t0_iso: new Date(T0).toISOString(), process_iso: new Date(tProcess).toISOString(), end_iso: new Date(tEnd).toISOString(),
