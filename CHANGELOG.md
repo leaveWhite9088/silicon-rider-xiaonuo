@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## v1.4 — 2026-11-04
+
+订单供给分布改造：午高峰 + 空间聚簇（**与 v1.3.1 的成绩不可混排**）。
+
+### 变更
+
+- 新增客户端模块 `src/client/order_distribution.mjs`：**不改 `src/engine/`**，在客户端对新生订单做重分布。
+  - 午高峰 11:30–13:00（模拟分钟 690–780）供给倍率 ×3，其余时段不变。
+  - 空间聚簇：餐饮/超市/药店各自选取热点取餐节点，住宅/写字楼选取热点送货片区，新单按 `hotShare`（默认 0.7）落入热点；重算 distance / deliveryFee / timeLimit，口径与引擎一致。
+  - 由种子决定，`rider_client.mjs` 与 `tools/verify_replay.mjs` **共用同一模块与同一配置**，回放逐字段一致。
+- `configs/benchmark.json`：新增 `distribution` 配置块；版本升至 `xiaonuo-v1.4`。
+- 锚值 `anchor_yuan` 由 350 临时调整为 **1000**（旧锚值按旧利润分布标定，新分布下不适用）；最终锚值待 `tools/bounds.mjs` 重标。
+- `protocol.json` 记录生效的 `distribution` 配置，回放按该配置重放。
+- 改造的目标与验收门槛见根目录 `改造验收标准.md`。
+
+### 注意
+
+- 旧种子因订单流改变而失效：v1.4 需要重新生成种子批次并重标锚值。
+- 午高峰在库单量峰值显著上升（冒烟局约 62 张），单条观察体积由约 7.4KB 增至约 19.7KB，属于已知副作用，可通过 `distribution.peak.multiplier` 调整。
+
 ## v1.3.1 — 2026-11-04
 
 B2 计时口径修正。
