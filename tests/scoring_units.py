@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src" / "scoring"))
 import metrics
+import model_identity
 import review_log
 
 
@@ -32,6 +33,39 @@ class C3Tests(unittest.TestCase):
         self.assertEqual(metrics.c3_level({"pathEff": 1.0, "emptyRatio": 0.01}), 7)
         self.assertEqual(metrics.c3_level({"pathEff": 1.46}), 4)
 
+
+
+class ModelIdentityTests(unittest.TestCase):
+    def test_numbered_batch_suffixes_merge(self):
+        base = "deepseek-v4.1-flash-1017"
+        for suffix in ("-h", "-h1", "-h2", "-s1", "-b1", "-a1", "-x2", "-batch1", "-run2", "-round3", "-trial1", "-seed1", "-rep1"):
+            self.assertEqual(model_identity.canonical_model_id(base + suffix), base, suffix)
+
+    def test_reasoning_variant_is_preserved(self):
+        base = "deepseek-v4.1-flash-1017"
+        self.assertEqual(
+            model_identity.canonical_model_id(base + "（Max）-h1"),
+            base + "（Max）",
+        )
+        self.assertNotEqual(
+            model_identity.canonical_model_id(base + "（Max）-h1"),
+            model_identity.canonical_model_id(base + "-h1"),
+        )
+
+    def test_version_suffix_is_not_stripped(self):
+        self.assertEqual(model_identity.canonical_model_id("deepseek-v4.1-flash-1017-v2"), "deepseek-v4.1-flash-1017-v2")
+        self.assertEqual(model_identity.canonical_model_id("deepseek-v4.1-flash-1017-ver2"), "deepseek-v4.1-flash-1017-ver2")
+        self.assertEqual(model_identity.canonical_model_id("deepseek-v4.1-flash-1017-gpt4"), "deepseek-v4.1-flash-1017-gpt4")
+        self.assertEqual(model_identity.canonical_model_id("deepseek-r1"), "deepseek-r1")
+        self.assertEqual(model_identity.canonical_model_id("command-r"), "command-r")
+        self.assertEqual(model_identity.canonical_model_id("deepseek-r1-h1"), "deepseek-r1")
+
+    def test_explicit_batch_run_matching(self):
+        base = "deepseek-v4.1-flash-1017"
+        self.assertTrue(model_identity.matches_batch_run(base + "-h", base + "-h1"))
+        self.assertTrue(model_identity.matches_batch_run(base + "-h1", base + "-h1"))
+        self.assertTrue(model_identity.matches_batch_run(base + "-h1", base + "-h1-extra"))
+        self.assertFalse(model_identity.matches_batch_run(base + "-h1", base + "-h10"))
 
 
 class ReviewLogTests(unittest.TestCase):

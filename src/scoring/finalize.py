@@ -33,11 +33,13 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import review_log
+from model_identity import canonical_model_id
 LEADERBOARD = ROOT / "leaderboard" / "scores.md"
 VERDICTS = ROOT / "leaderboard" / "verdicts"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--model", required=True)
+ap.add_argument("--model-id", default=None, help="汇总分组用的规范模型名；默认从 --model 去掉批次后缀")
 ap.add_argument("--runs", nargs="*", default=None, help="要汇总的 run 目录；不填时从 blind-map 自动发现")
 ap.add_argument("--seed-indexes", default=None, help="预注册序号，逗号分隔（推荐）")
 ap.add_argument("--seeds", default=None, help="明文种子，逗号分隔（与 --seed-indexes 二选一）")
@@ -46,7 +48,7 @@ ap.add_argument("--review-log", default=None, help="中心化追加式评审日�
 ap.add_argument("--d-file", default=None, help="兼容旧盲评草稿 JSON")
 ap.add_argument("--d-aggregate", choices=("mean", "median"), default="mean", help="从评审日志聚合 D 的方式")
 ap.add_argument("--min-judges", type=int, default=1, help="每个 case 至少需要多少位评委")
-ap.add_argument("--blind-map", action="append", default=None, help="盲评私有映射 JSON，可重复；不填时自动发现 leaderboard/verdicts/<模型>.*.blind-map.json")
+ap.add_argument("--blind-map", action="append", default=None, help="盲评私有映射 JSON，可重复；不填时按规范模型 ID 自动发现 leaderboard/verdicts/*.blind-map.json")
 ap.add_argument("--no-replay", action="store_true", help="跳过回放核验（不建议）")
 ap.add_argument("--allow-partial", action="store_true", help="允许部分 run 尚无评分；汇总只使用已评分 run")
 ap.add_argument("--dry-run", action="store_true", help="只打印，不写榜")
@@ -56,15 +58,26 @@ if a.min_judges < 1:
     print("--min-judges 必须 >= 1")
     sys.exit(1)
 
+model_id = (a.model_id or canonical_model_id(a.model)).strip()
+if not model_id:
+    print("--model/--model-id 不能为空")
+    sys.exit(1)
+
 map_args = a.blind_map or []
 map_files = [Path(p).resolve() for p in map_args]
 if not map_files:
-    map_files = sorted(VERDICTS.glob(f"{a.model}.*.blind-map.json"))
-    legacy = VERDICTS / f"{a.model}.blind-map.json"
-    if legacy.exists():
-        map_files.append(legacy)
+    map_files = []
+    for mf in sorted(VERDICTS.glob("*.blind-map.json")):
+        try:
+            bm = json.loads(mf.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        map_model_id = bm.get("model_id") or canonical_model_id(bm.get("model", ""))
+        if map_model_id == model_id:
+            map_files.append(mf)
 map_files = list(dict.fromkeys(map_files))
 blind_maps = []
+model_inputs = {a.model}
 run_to_case = {}
 run_to_pack = {}
 for mf in map_files:
@@ -72,9 +85,14 @@ for mf in map_files:
         print(f"找不到盲评映射：{mf}")
         sys.exit(1)
     bm = json.loads(mf.read_text(encoding="utf-8"))
-    if bm.get("model") and bm["model"] != a.model:
-        print(f"盲评映射模型 {bm['model']} 与 --model {a.model} 不一致")
+    map_model_id = bm.get("model_id") or canonical_model_id(bm.get("model", ""))
+    if map_model_id and map_model_id != model_id:
+        print(f"盲评映射模型 {bm.get('model') or map_model_id}（规范 ID {map_model_id}）与 --model {a.model}（规范 ID {model_id}）不一致")
         sys.exit(1)
+    if bm.get("model"):
+        model_inputs.add(bm["model"])
+    elif bm.get("model_id"):
+        model_inputs.add(bm["model_id"])
     pack_id = bm.get("pack_id")
     if not pack_id:
         print(f"映射缺少 pack_id：{mf}")
@@ -309,7 +327,7 @@ def agg(key):
     vals = [r[key] for r in rows if isinstance(r[key], (int, float))]
     return (statistics.mean(vals), (max(vals) - min(vals)) / 2) if vals else (None, None)
 
-lines = [f"\n### 最终成绩 · {a.model} — {datetime.datetime.now():%Y-%m-%d %H:%M}", "",
+lines = [f"\n### 最终成绩 · {model_id} — {datetime.datetime.now():%Y-%m-%d %H:%M}", "",
          "| 种子 | 净利 | 单数 | 端到端 | A(30) | B(15) | C(25) | D(30) | D评委 | 总分(100) | 承诺 | 回放 |",
          "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
 for r in rows:
@@ -331,8 +349,8 @@ if a.dry_run:
     sys.exit(0)
 
 VERDICTS.mkdir(parents=True, exist_ok=True)
-(VERDICTS / f"{a.model}.json").write_text(json.dumps({
-    "model": a.model, "finalized_at": datetime.datetime.now().isoformat(timespec="seconds"),
+(VERDICTS / f"{model_id}.json").write_text(json.dumps({
+    "model": model_id, "model_inputs": sorted(model_inputs), "finalized_at": datetime.datetime.now().isoformat(timespec="seconds"),
     "blind_pack_id": blind_pack_id,
     "blind_pack_ids": sorted({r["pack_id"] for r in rows if r.get("pack_id")}),
     "review_log": a.review_log,
@@ -345,4 +363,4 @@ VERDICTS.mkdir(parents=True, exist_ok=True)
 }, ensure_ascii=False, indent=1), encoding="utf-8")
 with LEADERBOARD.open("a", encoding="utf-8") as f:
     f.write(text + "\n")
-print(f"\n已写入：{LEADERBOARD.relative_to(ROOT)} 与 {VERDICTS.relative_to(ROOT)}/{a.model}.json")
+print(f"\n已写入：{LEADERBOARD.relative_to(ROOT)} 与 {VERDICTS.relative_to(ROOT)}/{model_id}.json")

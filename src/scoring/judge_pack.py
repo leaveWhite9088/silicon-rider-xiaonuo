@@ -3,10 +3,11 @@
 生成匿名盲评包。评委只拿到 leaderboard/blind/<pack_id>/ 这一个目录路径；
 包内不出现模型名、A/B/C、运行目录或种子明文。
 评委通过 judge_submit.py 把评分追加到中心日志 leaderboard/reviews.jsonl。
-模型到 case_id 的私有映射写到 leaderboard/verdicts/<model>.blind-map.json。
+模型到 case_id 的私有映射写到 leaderboard/verdicts/<model_id>.<pack_id>.blind-map.json。
 """
 from pathlib import Path
 import sys, json, argparse, secrets, datetime
+from model_identity import canonical_model_id, matches_batch_run
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -20,15 +21,45 @@ BLIND_ROOT = ROOT / "leaderboard" / "blind"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--model", required=True)
+ap.add_argument("--model-id", default=None, help="汇总分组用的规范模型名；默认从 --model 去掉批次后缀")
 ap.add_argument("--runs", nargs="*", default=None)
 ap.add_argument("--print", dest="do_print", action="store_true", help="兼容旧参数：只打印盲评包内路径，不打印事实卡内容")
 a = ap.parse_args()
 
-runs = [Path(p).resolve() for p in a.runs] if a.runs else sorted(
-    p for p in (ROOT / "runs").glob(a.model + "*") if p.is_dir())
+raw_model = a.model.strip()
+model_id = (a.model_id or canonical_model_id(raw_model)).strip()
+if not model_id:
+    print("--model/--model-id 不能为空")
+    sys.exit(1)
+
+runs_root = ROOT / "runs"
+if a.runs:
+    runs = [Path(p).resolve() for p in a.runs]
+else:
+    if not runs_root.exists():
+        print("找不到 runs/ 目录")
+        sys.exit(1)
+    if canonical_model_id(raw_model) != raw_model:
+        # --model 本身带批次后缀时，只打包这一批；要合并同模型多批请用 --runs 或传基础模型名。
+        runs = sorted(
+            p for p in runs_root.iterdir()
+            if p.is_dir() and matches_batch_run(raw_model, p.name)
+        )
+    else:
+        runs = sorted(
+            p for p in runs_root.iterdir()
+            if p.is_dir() and canonical_model_id(p.name) == model_id
+        )
 runs = [r for r in runs if (r / "factcard.md").exists()]
+# 显式给 --model-id 且显式给 --runs 时，由调用者负责模型归属，允许任意批次后缀。
+bad_runs = [] if (a.model_id and a.runs) else [r.name for r in runs if canonical_model_id(r.name) != model_id]
+if bad_runs:
+    print(f"以下 run 的规范模型 ID 与 --model/--model-id（{model_id}）不一致：")
+    for name in bad_runs:
+        print("  - " + name)
+    sys.exit(1)
 if not runs:
-    print("没有找到带 factcard.md 的运行目录（先跑 score_run.py）")
+    print(f"没有找到模型 {model_id} 的带 factcard.md 的运行目录（先跑 score_run.py，或用 --runs 指定）")
     sys.exit(1)
 
 BLIND_ROOT.mkdir(parents=True, exist_ok=True)
@@ -107,15 +138,17 @@ python src/scoring/judge_submit.py \\
 (pack_dir / "SUBMIT.md").write_text(SUBMIT, encoding="utf-8")
 
 VERDICTS.mkdir(parents=True, exist_ok=True)
-map_path = VERDICTS / f"{a.model}.{pack_id}.blind-map.json"
+map_path = VERDICTS / f"{model_id}.{pack_id}.blind-map.json"
 map_obj = {
     "model": a.model,
+    "model_id": model_id,
     "pack_id": pack_id,
     "created": datetime.datetime.now().isoformat(timespec="seconds"),
     "cases": mapping_cases,
 }
 map_path.write_text(json.dumps(map_obj, ensure_ascii=False, indent=1), encoding="utf-8")
 
+print(f"模型 ID：{model_id}")
 print(f"盲评包已生成：{pack_dir}")
 print("把上面这个目录交给评委；不要给仓库其他路径、模型名、A/B/C 或映射文件。")
 print(f"包清单：{manifest_path}")
