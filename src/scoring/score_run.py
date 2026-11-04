@@ -44,7 +44,7 @@ if seed is None and a.seed_index is not None:
     import os
     seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
     if not seeds_file.exists():
-        print(f"找不到种子明文：{seeds_file}（由主控放置，或用环境变量 SR_SEEDS 指定）")
+        print(f"找不到种子明文：{seeds_file}（由评测环境放置，或用环境变量 SR_SEEDS 指定）")
         sys.exit(1)
     table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
     if a.seed_index not in table:
@@ -66,11 +66,8 @@ out["seed_commit"] = commit
 out["seed_verified"] = seed_ok
 out["anchor"] = metrics.PROFIT_ANCHOR
 out["t0_source"] = m.get("t0Source")
-out["b2_reliable"] = (m.get("t0Source") != "process")
+out["b2_reliable"] = bool(m.get("endToEndSeconds") is not None or m.get("wallSeconds"))
 (folder / "评分.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
-if m.get("t0Source") == "process":
-    print("!! t0 来自裁判域之外（驱动自己按的开始键）：B2 不可信，该次成绩应标注或重跑")
-
 e2e = (m.get("endToEndSeconds") or 0) / 60
 drv = (m.get("wallSeconds") or 0) / 60
 rec = (

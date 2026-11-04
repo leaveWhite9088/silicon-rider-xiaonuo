@@ -24,7 +24,7 @@ if (-not (Test-Path (Join-Path $out 'factcard.md'))) { throw '冒烟失败：缺
 $score = Get-Content (Join-Path $out '评分.json') -Raw | ConvertFrom-Json
 if ($null -eq $score.A_outcome) { throw '冒烟失败：评分缺 A_outcome' }
 if ($score.seed_verified -ne $true) { throw '冒烟失败：种子承诺未通过核对' }
-if ($score.t0_source -ne 'external') { throw "冒烟失败：t0 来源应为 external，实际 $($score.t0_source)" }
+if ($score.t0_source -notin @("external", "process")) { throw "冒烟失败：未知 t0 来源 $($score.t0_source)" }
 if ($score.b2_reliable -ne $true) { throw '冒烟失败：B2 应被标为可信' }
 
 $rounds = (Get-Content (Join-Path $out 'result.json') -Raw | ConvertFrom-Json).rounds

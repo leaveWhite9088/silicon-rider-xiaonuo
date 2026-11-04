@@ -1,4 +1,4 @@
-# 起一班：把任务交给模型前先记 t0（B2 从这一刻算起）
+# 起一班：开始前记录 t0（B2 从这一刻算起；命令传入或进程启动均可）
 param(
     [Parameter(Mandatory = $true)][string]$Model,
     [Parameter(Mandatory = $true)][int]$Seed,

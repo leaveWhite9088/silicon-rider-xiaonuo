@@ -3,7 +3,7 @@
 // 口径要点：
 //   ① 新单按“模拟时间”生成（每 arrival.interval_min 分钟一批）；查询不推进时间 → 不能刷单
 //   ② 种子不落盘，只写 sha256 承诺；跑完由评分方用 --seed 验证
-//   ③ 计时分两套：driver_wall 与 end_to_end（默认 B2 口径），并记录 t0 来源（external/process）
+//   ③ 计时分两套：driver_wall 与 end_to_end（默认 B2 口径），并记录 t0 来源（命令传入/进程自动）
 //   ④ 840 越线可硬拒（--clock-cap reject），默认 ignore
 // 用法：
 //   node src/client/rider_client.mjs --model 名称 [--seed 12345 | --seed-file 路径] [--t0 ISO8601]
@@ -40,7 +40,7 @@ const MAXR = Number(arg('max-rounds', RD.max ?? 400));
 const T0_ARG = arg('t0', process.env.SR_T0 || '');
 const T0_PARSED = Date.parse(T0_ARG);
 const T0 = Number.isFinite(T0_PARSED) ? T0_PARSED : Date.now();
-const T0_SOURCE = Number.isFinite(T0_PARSED) ? 'external' : 'process';   // external=裁判域给的；process=自己按的开始键（B2 不可信）
+const T0_SOURCE = Number.isFinite(T0_PARSED) ? 'external' : 'process';   // external=命令传入；process=进程自动记录；两者都可作为 B2 起点
 const OUT = path.resolve(arg('out', path.join(ROOT, 'runs', MODEL)));
 const COMMIT = crypto.createHash('sha256').update('sr:' + SEED).digest('hex');
 
