@@ -124,4 +124,4 @@ print(f"私有映射（裁判不可见，finalize.py 使用）：{map_path}")
 if a.do_print:
     for c in cases:
         print(pack_dir / c["factcard"])
-print("\n评委通过 judge_submit.py 追加到中心日志；主控用 finalize.py --review-log 汇总。")
+print("\n评委通过 judge_submit.py 追加到中心日志；汇总时用 finalize.py --review-log 汇总。")

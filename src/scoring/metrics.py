@@ -495,7 +495,7 @@ def factcard(m, case_id=None):
             L.append(f"[G{i:02d}] round{f_['round']} {f_['tool']} {f_['args']} → {f_['code']}: {f_['msg']}{extra}")
     if m.get("deadOrders") or m.get("slowOrders") or m.get("endCarriedDetail"):
         L.append("")
-        L.append("## 履约异常（I行，主控逐单核对）")
+        L.append("## 履约异常（I行，汇总时逐单核对）")
         i = 1
         for e in (m.get("deadOrders") or []):
             L.append(f"[I{i:02d}] 死单：{e['orderId']} 于 {fmt_time(e.get('acceptMinute'))} 接单，{'接单后从未取货' if not e['picked'] else '取货后从未送达'}，至收班挂单 {e['carriedMinutes']} 分钟" + ("，收班时仍在名下" if e.get("inEndSnapshot") else ""))

@@ -38,7 +38,7 @@ leaderboard/reviews.jsonl
 `judge_pack.py` 会生成：
 
 - `leaderboard/blind/<pack_id>/`：交给评委的唯一路径。内含匿名 `case-*.md`、`README.md`、`RUBRIC.md`、`SUBMIT.md` 和 `pack.json`；不含模型名、A/B/C、运行目录或种子明文。
-- `leaderboard/verdicts/<模型名>.<pack_id>.blind-map.json`：`case_id -> runs/<名>` 的私有映射，只给主控和 `finalize.py`，**不能给评委**。
+- `leaderboard/verdicts/<模型名>.<pack_id>.blind-map.json`：`case_id -> runs/<名>` 的私有映射，只给运行汇总的人 / `finalize.py`，**不能给评委**。
 
 ## 约定
 

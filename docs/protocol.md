@@ -1,4 +1,4 @@
-# 赛制与工具 · silicon-rider-xiaonuo v1.3
+# 赛制与工具 · silicon-rider-xiaonuo v1.3.1
 
 > 本文件是**给运行者/评审看的协议说明**；被测模型只拿到「一行观察 ↔ 一行工具调用」的交互循环。
 
@@ -89,7 +89,7 @@ python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case
        --judge-id <评委ID> --judge-model <评委模型> \
        --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]"
 
-# 主控出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
+# 手动汇总出榜：按模型名自动发现所有 blind-map 和 run，合并多个三轮
 python src/scoring/finalize.py --model Demo \
        --review-log leaderboard/reviews.jsonl \
        --d-aggregate mean --min-judges 1

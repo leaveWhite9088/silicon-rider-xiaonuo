@@ -33,14 +33,14 @@ if (!MODEL) { console.error('缺少 --model'); process.exit(1); }
 if (!POLICY) { console.error('缺少 --policy（写一个 next(obs, st) 的模块）'); process.exit(1); }
 
 // ---- 种子：按序号取，明文在仓库外 ----
-// 明文路径：$SR_SEEDS 或 <仓库>/../.sr-seeds/seeds.json（由主控保管；执行者只给序号）
+// 明文路径：$SR_SEEDS 或 <仓库>/../.sr-seeds/seeds.json（由评测环境保管；执行者只给序号）
 const SEEDS_PATH = process.env.SR_SEEDS || path.join(ROOT, '..', '.sr-seeds', 'seeds.json');
 const seedIndex = Number(arg('seed-index', '0'));
 let seed = Number(arg('seed', '0')) >>> 0;
 if (!seed && seedIndex) {
   if (!fs.existsSync(SEEDS_PATH)) {
     console.error(`找不到种子明文：${SEEDS_PATH}`);
-    console.error('由主控把 seeds.json 放到该路径（或用环境变量 SR_SEEDS 指定）；执行者不应自己生成种子。');
+    console.error('把 seeds.json 放到该路径（或用环境变量 SR_SEEDS 指定）；执行者不应自己生成种子。');
     process.exit(1);
   }
   const secret = JSON.parse(fs.readFileSync(SEEDS_PATH, 'utf8'));

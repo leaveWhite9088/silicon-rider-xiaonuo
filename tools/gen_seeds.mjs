@@ -2,7 +2,7 @@
 // 用法：node tools/gen_seeds.mjs --n 3 [--out configs/seeds.json]
 //
 // 产物：
-//   configs/seeds.json         明文（**不进库**，由主控保管并备份）——执行者通过 --seed-index 使用，无需看到明文
+//   configs/seeds.json         明文（**不进库**，由评测环境保管并备份）——执行者通过 --seed-index 使用，无需看到明文
 //   configs/seeds.commit.json  只含 sha256 承诺（**进库**）——证明这组种子是先定好的、事后没换
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +31,7 @@ for (let i = 0; i < n; i++) {
 fs.writeFileSync(secretPath, JSON.stringify({ created: new Date().toISOString(), seeds }, null, 1));
 fs.writeFileSync(commitPath, JSON.stringify({
   created: new Date().toISOString(),
-  note: '本组种子一次性确定、此后不更换。明文在 configs/seeds.json（不进库，由主控保管备份）；此处只公开承诺。',
+  note: '本组种子一次性确定、此后不更换。明文在 configs/seeds.json（不进库，由评测环境保管备份）；此处只公开承诺。',
   commits: seeds.map(s => ({ index: s.index, commit: s.commit })),
 }, null, 1));
 

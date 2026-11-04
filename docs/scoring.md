@@ -1,4 +1,4 @@
-# 计分规范 · v1.3
+# 计分规范 · v1.3.1
 
 脚本层 70 分（确定性）+ 决策层 30 分（评审）。实现见 `src/scoring/metrics.py`；
 常量集中在 `configs/benchmark.json → scoring`。
@@ -33,8 +33,7 @@ B2 = 10 × 0.5 ** (max(0, 分钟 − 8) / 12)
 ```
 
 - 端到端缺失时退回驱动墙钟，并在事实卡“口径”行标注 `driver_wall`。
-- **`timing.t0_source` 必须是 `external`**（t0 由裁判域在把任务交给模型之前记录）。若为 `process`（驱动自己生成），
-  `评分.json` 写 `b2_reliable=false` 并提示重跑——自己给自己计时的成绩不计 B2。
+- `t0_source=external`（命令传入 `--t0`）或 `process`（驱动进程启动时自动记录）都是有效起点；只作诊断，不影响 B2 可信性。
 - 两个封顶：`B1 ≤ 5 × A/30`、`B2 ≤ 10 × A/30`（没做对不能靠快得分）。
 
 ## C 操作质量（25）
@@ -70,7 +69,7 @@ C3 只使用 pathEfficiency；不使用空驶率修正，emptyRatio 不参与评
 ## D 决策智能（30）
 
 `D = D1 挑单与收益取舍 11 + D2 组合与动态调整 10 + D3 风险权衡与班次管理 9`，
-由 judge_pack.py 生成的匿名盲评包交给**不固定数量**的独立评审。每位评委通过 `judge_submit.py` 提交，评分追加到中心日志 `leaderboard/reviews.jsonl`；评委只拿 `leaderboard/blind/<pack_id>/` 路径，不显示、也不得查看其他评委的评分。主控用 `review_merge.py` 或 `finalize.py --review-log ... --d-aggregate mean|median` 聚合 D；模型到 case_id 的私有映射由主控保管，不交给评委。
+由 judge_pack.py 生成的匿名盲评包交给**不固定数量**的独立评审。每位评委通过 `judge_submit.py` 提交，评分追加到中心日志 `leaderboard/reviews.jsonl`；评委只拿 `leaderboard/blind/<pack_id>/` 路径，不显示、也不得查看其他评委的评分。汇总时用 `review_merge.py` 或 `finalize.py --review-log ... --d-aggregate mean|median` 聚合 D；模型到 case_id 的私有映射不交给评委。
 - 中心日志每行记录：`review_id`、`created_at`、`judge_id`、`judge_model`、`pack_id`、`case_id`、`D1/D2/D3`、`evidence`、`note`。
 
 事实卡包含（脚本生成，不含净利，防结果光环）：

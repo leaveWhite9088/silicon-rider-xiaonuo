@@ -25,7 +25,7 @@ const SEEDS_PATH = process.env.SR_SEEDS || path.join(ROOT, '..', '.sr-seeds', 's
 
 function readSeed(index) {
   if (!fs.existsSync(SEEDS_PATH)) {
-    console.error(`找不到种子明文：${SEEDS_PATH}（由主控放置，或用环境变量 SR_SEEDS 指定）`);
+    console.error(`找不到种子明文：${SEEDS_PATH}（由评测环境放置，或用环境变量 SR_SEEDS 指定）`);
     process.exit(1);
   }
   const t = JSON.parse(fs.readFileSync(SEEDS_PATH, 'utf8')).seeds.find(s => s.index === Number(index));

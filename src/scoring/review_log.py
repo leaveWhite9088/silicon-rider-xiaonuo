@@ -139,7 +139,7 @@ def append_review(log_path, record, reject_duplicate=True):
             if any((x["pack_id"], x["case_id"], x["judge_id"]) == key for x in existing):
                 raise DuplicateReviewError(
                     f"该评委已提交过 pack={rec['pack_id']} case={rec['case_id']}；"
-                    "如需更正请联系主控，不要重复提交。")
+                    "如需更正请联系汇总者，不要重复提交。")
         with path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(rec, ensure_ascii=False, separators=(",", ":")) + "\n")
             f.flush()

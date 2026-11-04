@@ -111,7 +111,7 @@ if a.seed_indexes:
     idxs = [int(x) for x in a.seed_indexes.split(",")]
     seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
     if not seeds_file.exists():
-        print(f"找不到种子明文：{seeds_file}（由主控放置，或用环境变量 SR_SEEDS 指定）"); sys.exit(1)
+        print(f"找不到种子明文：{seeds_file}（由评测环境放置，或用环境变量 SR_SEEDS 指定）"); sys.exit(1)
     table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
     try:
         seeds = [table[i] for i in idxs]
@@ -123,7 +123,7 @@ else:
     import os
     seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
     if not seeds_file.exists():
-        print(f"找不到种子明文：{seeds_file}（由主控放置，或用环境变量 SR_SEEDS 指定）")
+        print(f"找不到种子明文：{seeds_file}（由评测环境放置，或用环境变量 SR_SEEDS 指定）")
         sys.exit(1)
     table = json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]
     commit_to_seed = {hashlib.sha256(("sr:" + str(s["seed"])).encode()).hexdigest(): s["seed"] for s in table}
