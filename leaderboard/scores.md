@@ -1,7 +1,7 @@
-# 排行榜 · silicon-rider-xiaonuo（v1）
+# 排行榜 · silicon-rider-xiaonuo（v1.2）
 
-> 每次评分由 `src/scoring/score_run.py` 自动追加；D 层（决策事实卡评审）由评审管道回填。
-> 本榜对应 **`xiaonuo-v1` 口径**（供给按模拟时间、B2 端到端）。版本号不同的成绩分开归档，不混排。
+> 每次评分由 `src/scoring/score_run.py` 自动追加；D 层（匿名盲评包）由评审管道回填。
+> 本榜对应 **`xiaonuo-v1.2` 口径**（供给按模拟时间、B2 端到端）。版本号不同的成绩分开归档，不混排。
 
 ## 赛制口径
 

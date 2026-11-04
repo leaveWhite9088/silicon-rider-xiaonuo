@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v1.2.0 — 2026-11-04
+
+评分与盲评修正（**与 v1.1.0 的成绩不可混排**：C2 错误码口径、C3 文档口径、D 盲评流程变化）。
+
+### 修复
+
+- **C2 状态一致性**改为使用引擎实际错误码：`INVALID_ORDER`、`ORDER_NOT_CARRIED`、`ORDER_NOT_PICKED_UP`、`WRONG_LOCATION`、`NOT_AT_SWAP_STATION` 等；容量错误按独立容量类统计，不进入 C2。
+- **C3 路径质量**明确只使用 `pathEfficiency = 总行驶距离 / 已完成订单取送距离之和`；`emptyRatio` 不参与评分，`docs/scoring.md` 与 `docs/design.md` 已同步。
+- **D 层盲评**：`judge_pack.py` 生成匿名盲评包，只把 `leaderboard/blind/<pack_id>/` 路径交给评委；包内不出现模型名、A/B/C、运行目录或种子明文。`case_id -> run` 私有映射写到 `leaderboard/verdicts/<模型名>.blind-map.json`，不交给评委；`finalize.py` 支持 `--blind-map` 与 `case_id` 映射。
+- `finalize.py` 增加 D1/D2/D3 范围校验，并在有效评委少于 3 位时提示。
+- 新增 `tests/scoring_units.py`，覆盖 C2 实际错误码与 C3 只使用 `pathEfficiency`。
+
 ## v1.1.0 — 2026-11-03
 
 赛制收紧与度量修正（**与 v1.0.0 的成绩不可混排**：供给时刻、工具数量、C3 分档都变了）。
