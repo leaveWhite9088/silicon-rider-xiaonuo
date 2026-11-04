@@ -24,3 +24,8 @@ __pycache__/
 leaderboard/blind/
 leaderboard/verdicts/*.blind-map.json
 leaderboard/verdicts/*.draft.json
+
+# 中心化追加式评审日志与聚合产物
+leaderboard/reviews.jsonl
+leaderboard/reviews.jsonl.lock
+leaderboard/reviews.merged.json
