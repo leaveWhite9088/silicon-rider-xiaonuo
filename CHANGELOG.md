@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v1.3.0 — 2026-11-04
+
+中心化追加式 D 层评审（**与 v1.2.0 的成绩不可混排**：D 聚合口径和评审流程变化）。
+
+### 新增
+
+- `judge_submit.py`：评委每次提交一个 case 的评分，追加到中心日志 `leaderboard/reviews.jsonl`；不回显其他评委分数，同一评委重复提交会被拒绝。
+- `review_log.py`：中心日志校验、追加锁、读取、按评委去重、mean/median 聚合。
+- `review_merge.py`：主控查看/导出中心日志的聚合结果。
+- `finalize.py` 新增 `--review-log`、`--d-aggregate mean|median`、`--min-judges`；支持不固定评委人数，并在排行榜显示 D 评委数。
+
+### 变更
+
+- `judge_pack.py` 不再生成固定 3 个评委槽位的 `verdict.draft.json`，改为生成 `pack.json` 和 `SUBMIT.md`；评委通过 `judge_submit.py` 独立提交。
+- 同一模型可生成多个 `<模型>.<pack_id>.blind-map.json`；`finalize.py --model` 自动发现并合并所有 run，`summary` 记录 `runs_total` / `runs_scored` / `judge_reviews` / `rounds_total`。
+- 中心日志、聚合产物和私有映射均不进入盲评包；中心日志与盲评映射已加入 `.gitignore`。
+- 文档同步说明：评委不得查看中心日志或其他评委评分；主控负责最终合并。
+
 ## v1.2.0 — 2026-11-04
 
 评分与盲评修正（**与 v1.1.0 的成绩不可混排**：C2 错误码口径、C3 文档口径、D 盲评流程变化）。
