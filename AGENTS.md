@@ -58,7 +58,7 @@ node tools/session.mjs state --session deepseek-v4-s1
 node tools/session.mjs stop  --session deepseek-v4-s1
 ```
 
-- 第 2、3 局同样起，换成 `-s2 / -s3` 和 `--seed-index 2 / 3`；**三个会话可并行**。
+- 第 2、3 局同样起，换成 `-s2 / -s3` 和 `--seed-index 2 / 3`；**引擎状态可并行，但正式成绩不要并行**。B2 是端到端墙钟，同模型/同账号并行会把排队时间算进先开跑的局；正式三局请串行跑，跑前至少用 `python tools/timing_audit.py runs --strict` 确认没有重叠。
 - 每次 `act` 返回新观察 + `advanced`（本次推进多少分钟）。返回 `ended: true` 就是 14:00 收工了。
 - **跑完 3 局后按下方「执行者收尾」运行官方评分和匿名打包脚本**；不要运行 `finalize.py` 或写排行榜。
 
@@ -166,7 +166,8 @@ python src/scoring/finalize.py --model <名> \
 
 需要先查看合并结果：`python src/scoring/review_merge.py --log leaderboard/reviews.jsonl --out leaderboard/reviews.merged.json --aggregate mean`。
 
-- **并发是安全的**：每局一个独立进程、独立输出目录、独立种子，互不共享状态。
+- **并发只对赛局状态安全**：每局一个独立进程、独立输出目录、独立种子，互不共享状态。
+- **B2 墙钟不并发安全**：同一模型/同一账号并行时，API 排队会污染端到端计时。正式评分必须串行跑，或用 `python tools/timing_audit.py runs --strict` 检测并标注 B2 不可比。
 - 执行者只需要知道"用第 1/2/3 个种子"，不需要也不应该读种子明文。
 
 `scripts/score_all.ps1 -SeedsFile seeds.json -Prefix <名>` 可把"评分 + 汇总"一次做完（按承诺哈希自动匹配种子）。
@@ -188,6 +189,7 @@ python src/scoring/finalize.py --model <名> \
 | `A_out_of_range=true` | 净利打穿锚值 → 人工复核，考虑重标锚 |
 | 事实卡标"疑似脚本代打" | 中位调用间隔 <300ms；本版禁止脚本代打，该次成绩无效，需人工复核 |
 | 分数异常偏低 | 看 B2 是否被端到端拖累、C1 准时率、C3 绕路 |
+| B2 明显异常 | 跑 `python tools/timing_audit.py runs`，先看同模型三局是否时间重叠；并行跑出的 B2 不作模型间比较 |
 
 ---
 

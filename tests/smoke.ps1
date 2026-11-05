@@ -3,8 +3,12 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 python (Join-Path $root 'tests\scoring_units.py')
 if ($LASTEXITCODE -ne 0) { throw '评分单元测试失败' }
+python (Join-Path $root 'tests\timing_audit_units.py')
+if ($LASTEXITCODE -ne 0) { throw 'B2 计时审计单元测试失败' }
 $client = Join-Path $root 'src\client\rider_client.mjs'
 $scorer = Join-Path $root 'src\scoring\score_run.py'
+node --test (Join-Path $root 'tests\order_distribution.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw '订单规则单元测试失败' }
 $out = Join-Path $root 'tests\_tmp\smoke'
 if (Test-Path (Join-Path $root 'tests\_tmp')) { Remove-Item (Join-Path $root 'tests\_tmp') -Recurse -Force }
 
@@ -30,5 +34,7 @@ if ($score.b2_reliable -ne $true) { throw '冒烟失败：B2 应被标为可信'
 $rounds = (Get-Content (Join-Path $out 'result.json') -Raw | ConvertFrom-Json).rounds
 node (Join-Path $root 'tools\verify_replay.mjs') $out --seed 12345 --quiet
 if ($LASTEXITCODE -ne 0) { throw '冒烟失败：回放与结算不一致' }
+python (Join-Path $root 'tools\timing_audit.py') $out --strict | Out-Null
+if ($LASTEXITCODE -ne 0) { throw '冒烟失败：B2 计时审计未通过' }
 Write-Host "冒烟通过：轮数=$rounds  A=$($score.A_outcome)  B=$($score.B_efficiency)  C=$($score.C_quality)  回放一致"
 Remove-Item (Join-Path $root 'tests\_tmp') -Recurse -Force

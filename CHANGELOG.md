@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased — 开发中
+
+- distribution.timeLimit（默认 enabled: false）：可选收紧新单与初始在库单的 timeLimit，支持 scale / cutMinutes / minMinutes，回放共用。
+- tools/timing_audit.py：检测同模型多局时间重叠，提示 B2 墙钟不可比；支持 --json 输出与 --strict 出榜拦截。
+- 文档明确：三局并发只对引擎状态安全，B2 要求同模型三局串行；文档版本同步到 v1.4。
+
 ## v1.4 — 2026-11-04
 
 订单供给分布改造：午高峰 + 空间聚簇（**与 v1.3.1 的成绩不可混排**）。
