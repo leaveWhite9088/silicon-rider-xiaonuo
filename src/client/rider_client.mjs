@@ -93,6 +93,7 @@ const wfile = obj => fs.appendFileSync(path.join(OUT, 'trace.jsonl'), JSON.strin
 // 订单分布改造（v1.4）：午高峰 + 空间聚簇；不改引擎，客户端后处理
 const { createDistribution } = await import(pathToFileURL(path.join(HERE, 'order_distribution.mjs')).href);
 const DIST = createDistribution({ nodes: sim.getNodes(), seed: SEED, config: CFG.distribution || {} });
+DIST.applyToExisting(sim);
 
 // ---- 新单到达：按模拟时间 ----
 let nextArrival = sim.getCurrentTime() + ARRIVAL_MIN;

@@ -19,6 +19,7 @@
   - 因此同一时刻更可能出现「同店多单」或「同片区多单」，合单与取送排序的收益显著上升。
   - 实现位于 `src/client/order_distribution.mjs`（**未改动 `src/engine/`**），回放脚本复用同一模块，结算可逐字段核验。
   - 生效配置写入 `protocol.json` 的 `distribution` 字段。
+  - v1.5 预留的时限收紧开关 distribution.timeLimit 默认关闭；开启后新单和初始在库单统一按 scale/cutMinutes/minMinutes 调整，并会同时缩短在库过期时间。
 - **在库单会自己过期**：从生成起超过 `timeLimit` 分钟就从池子里消失（不会另行通知）。
   观察里每条在库单都带 `expiresIn`（还能待几分钟），接不接、要不要先跑过去，由你判断。
 - **时限自接单起算**：`deadline = 接单时刻 + timeLimit`。观察里 `carried[].deadline` 就是真值。
@@ -67,7 +68,7 @@
 
 见 `docs/scoring.md`。要点：
 
-- **A30** 净利 / 锚值（`configs/benchmark.json`，默认 350；打穿锚值会报警并转人工复核）。
+- **A30** 净利 / 锚值（configs/benchmark.json，v1.4 默认 500；打穿锚值会报警并转人工复核）。
 - **B15** = 无效调用 5（失败 + 动作间同参数重复查询）+ **端到端**耗时 10。
 - **C25** = 准时率 9 + 状态一致性 8 + 路径效率 8。
 - **D30** = 匿名盲评包 × 不固定数量的独立评审；评分通过 `judge_submit.py` 追加到中心日志 `leaderboard/reviews.jsonl`，`finalize.py` 按 mean/median 聚合。评委只拿 `leaderboard/blind/<pack_id>/` 路径，包内无模型名/A/B/C。

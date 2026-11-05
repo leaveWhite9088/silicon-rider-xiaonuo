@@ -40,6 +40,7 @@ sim.setStatus('running');
 // 订单分布改造（v1.4）：与 rider_client 共用同一模块与同一配置，保证回放一致
 const { createDistribution } = await import(pathToFileURL(path.join(ROOT, 'src', 'client', 'order_distribution.mjs')).href);
 const DIST = createDistribution({ nodes: sim.getNodes(), seed, config: proto.distribution || {} });
+DIST.applyToExisting(sim);
 
 let nextArrival = sim.getCurrentTime() + INT;
 function spawnDue() {

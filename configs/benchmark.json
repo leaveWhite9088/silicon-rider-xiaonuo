@@ -51,6 +51,12 @@
       "supermarketHot": 2,
       "pharmacyHot": 2,
       "deliveryHot": 8
+    },
+    "timeLimit": {
+      "enabled": false,
+      "scale": 1,
+      "cutMinutes": 0,
+      "minMinutes": 12
     }
   }
 }
