@@ -11,7 +11,8 @@
   - 空间聚簇：餐饮/超市/药店各自选取热点取餐节点，住宅/写字楼选取热点送货片区，新单按 `hotShare`（默认 0.7）落入热点；重算 distance / deliveryFee / timeLimit，口径与引擎一致。
   - 由种子决定，`rider_client.mjs` 与 `tools/verify_replay.mjs` **共用同一模块与同一配置**，回放逐字段一致。
 - `configs/benchmark.json`：新增 `distribution` 配置块；版本升至 `xiaonuo-v1.4`。
-- 锚值 `anchor_yuan` 由 350 临时调整为 **1000**（旧锚值按旧利润分布标定，新分布下不适用）；最终锚值待 `tools/bounds.mjs` 重标。
+- 锚值 `anchor_yuan` 由 350 调整为 **500**。理由：实测最高净利 425.9，350 会让最好两局同时封顶并列；1000 会把 A 压到 6–13 分失去可解释性；500 保证不饱和。
+- 已验证**改锚值不改变区分度**（1000→500 时信噪比 1.39→1.18，且前 3 名排序翻转），故不得用调锚值来制造分差；最终锚值仍待 `tools/bounds.mjs` 复核。
 - `protocol.json` 记录生效的 `distribution` 配置，回放按该配置重放。
 - 改造的目标与验收门槛见根目录 `改造验收标准.md`。
 

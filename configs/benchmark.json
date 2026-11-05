@@ -21,7 +21,7 @@
     "max": 400
   },
   "scoring": {
-    "anchor_yuan": 1000,
+    "anchor_yuan": 500,
     "A_max": 30,
     "B": {
       "b1_max": 5,
