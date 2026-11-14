@@ -12,18 +12,27 @@ export function generateSystemPrompt(simulator) {
     const pos = a?.getPosition?.() ?? '?';
     const bat = a?.getBattery?.() ?? '?';
     const profit = a?.getProfit?.() ?? 0;
+    // 客户端（src/client/movement_tuning.mjs）可通过 simulator.rulesInfo 改写速度倍率与时限收紧；缺省 = 引擎原值
+    const info = simulator?.rulesInfo ?? {};
+    const f = Number(info.speedMultiplier) > 0 ? Number(info.speedMultiplier) : 1;
+    const n = x => Number(x.toFixed(2));
+    const tl = info.timeLimit ?? {};
+    const tlText = tl.enabled
+        ? `\`max(${n(tl.minMinutes ?? 12)}, (20 + 3×(取送距离−3)) × ${n(tl.scale ?? 1)}${tl.cutMinutes ? ` − ${n(tl.cutMinutes)}` : ''})\`，不足 3 km 按 3 km 记`
+        : '\`20 + 3×(取送距离−3)\`，不足 3 km 记 20 分钟';
 
     return [
         '# 模拟城市 · 外卖骑手',
         '',
         `当前：${hh}（班次 06:00–14:00）　位置 ${pos}　电量 ${bat}%　已赚 ¥${Number(profit).toFixed(2)}`,
+        '目标：多赚班次净利，同时保持准时送达、有始有终不烂单、路线顺畅、调用准确且动作利落。',
         '',
         '## 规则要点',
-        '- 移动耗时 = 距离 / 速度：畅通 30 km/h（≈2 分钟/km），拥堵时降为 25/20/15；7:00–9:00 地图边缘道路更堵。',
+        `- 移动耗时 = 距离 / 速度：畅通 ${n(30 * f)} km/h（≈${n(2 / f)} 分钟/km），拥堵时降为 ${n(25 * f)}/${n(20 * f)}/${n(15 * f)}；7:00–9:00 地图边缘道路更堵。`,
         '- 电量每公里消耗 2%，满电 50 km；电量耗尽后按推行速度 10 km/h 计。',
         '- 取货固定 2 分钟、送货固定 1 分钟；换电 1 分钟 + 0.5 元，电量恢复到 100%。',
         '- 承载上限：5 单 / 10 kg。',
-        '- 时限 = 接单时刻 + 该单 timeLimit（`20 + 3×(取送距离−3)`，不足 3 km 记 20 分钟）。',
+        `- 时限 = 接单时刻 + 该单 timeLimit（${tlText}）。`,
         '  观察里 `carried[].deadline` 就是真实截止时刻；`openOrders[].timeLimit` 是接单后才会开始的时长。',
         '- 超时罚款：≤5 分钟不扣；5–10 分钟扣 30%；10–15 分钟扣 50%；>15 分钟扣 70%。',
         '- 配送费 = 起步 3.65 元（≤3 km）+ 距离费（3–4 km 每 0.1 km +0.15；>4 km 每 0.1 km +0.1）'
@@ -39,7 +48,7 @@ export function generateSystemPrompt(simulator) {
         '（全部在库单已在每轮观察里给出，因此没有“搜单”工具。）',
         '',
         '## 策略提示',
-        '- 挑单看“单位时间收入”：fee ÷ (2×(接驾km + 送餐km) + 3分)，而不是只看配送费。',
+        `- 挑单看“单位时间收入”：fee ÷ (${n(2 / f)}×(接驾km + 送餐km) + 3分)，而不是只看配送费。`,
         '- 接单才起算时限：可以先骑到取餐点附近再接单，把空驶挪到时限之外（但要留余地，订单可能过期）。',
         '- 合单看最紧的那一单：从接单到第一单送达必须小于该单时限，取餐点扎堆、送餐点同向才值得合。',
         '- 电量按“下一趟之前够不够”规划，别等掉到 0；剩余续航 < 本趟里程 + 5 km 就先换电。',

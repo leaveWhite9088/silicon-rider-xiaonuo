@@ -37,6 +37,11 @@ if (quiet) console.log = () => {};
 const sim = new Simulator({ seed, duration: sc.duration ?? 480, mapSize: sc.map_size || 'large', baseOrderFrequency: 5 });
 sim.setStatus('running');
 
+// 行驶速度倍率（v1.5）：按 protocol.json 记录的 movement 重放（缺省 = 1，兼容旧运行）
+const { mergeMovement, applySpeedMultiplier } = await import(pathToFileURL(path.join(ROOT, 'src', 'client', 'movement_tuning.mjs')).href);
+const { CongestionManager } = await import(pathToFileURL(path.join(ROOT, 'src', 'engine', 'world', 'congestion-manager.js')).href);
+applySpeedMultiplier(CongestionManager, mergeMovement(proto.movement).speed_multiplier);
+
 // 订单分布改造（v1.4）：与 rider_client 共用同一模块与同一配置，保证回放一致
 const { createDistribution } = await import(pathToFileURL(path.join(ROOT, 'src', 'client', 'order_distribution.mjs')).href);
 const DIST = createDistribution({ nodes: sim.getNodes(), seed, config: proto.distribution || {} });

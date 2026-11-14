@@ -9,6 +9,8 @@ $client = Join-Path $root 'src\client\rider_client.mjs'
 $scorer = Join-Path $root 'src\scoring\score_run.py'
 node --test (Join-Path $root 'tests\order_distribution.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw '订单规则单元测试失败' }
+node --test (Join-Path $root 'tests\movement_tuning.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw '行驶速度倍率单元测试失败' }
 $out = Join-Path $root 'tests\_tmp\smoke'
 if (Test-Path (Join-Path $root 'tests\_tmp')) { Remove-Item (Join-Path $root 'tests\_tmp') -Recurse -Force }
 

@@ -53,9 +53,17 @@ const ALLOWED_TOOLS = new Set([
 
 const { Simulator } = await import(pathToFileURL(path.join(HERE, '..', 'engine', 'core', 'simulator.js')).href);
 const { MovementCalculator } = await import(pathToFileURL(path.join(HERE, '..', 'engine', 'core', 'movement-calculator.js')).href);
+const { calculateTimeSlotFee } = await import(pathToFileURL(path.join(HERE, '..', 'engine', 'core', 'fee-calculator.js')).href);
 
 const sim = new Simulator({ seed: SEED, duration: SC.duration_min ?? 480, mapSize: SC.map_size ?? 'large', baseOrderFrequency: 5 });
 sim.setStatus('running');
+
+// 行驶速度倍率（v1.5）：客户端包一层，不改引擎；help 的规则文本读 sim.rulesInfo
+const { mergeMovement, applySpeedMultiplier, scaleStationEstimates, buildRulesInfo } = await import(pathToFileURL(path.join(HERE, 'movement_tuning.mjs')).href);
+const { CongestionManager } = await import(pathToFileURL(path.join(HERE, '..', 'engine', 'world', 'congestion-manager.js')).href);
+const MOVEMENT = mergeMovement(CFG.movement);
+applySpeedMultiplier(CongestionManager, MOVEMENT.speed_multiplier);
+sim.rulesInfo = buildRulesInfo(MOVEMENT, (CFG.distribution || {}).timeLimit);
 
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'trace.jsonl'), '');   // 每次运行清空轨迹，避免同一目录重跑时把两次记录追加到一起
@@ -73,13 +81,14 @@ function snap() {
            score: sim.getScoreCalculator().calculateMetrics() };
 }
 function printObs(s) {
-  // 已接单的 deadline 用引擎真实值（= 接单时刻 + 时限）
+  // 已接单的 deadline 用引擎真实值（= 接单时刻 + 时限）；在库单 fee 计入当前时刻接单可得的时段补贴（如 06:00–07:00 +1 元）
   // 取送点同时给 `pickup/delivery`（推荐，与在库单一致）和 `pickupLocation/deliveryLocation`（兼容旧字段）
-  const carried = (s.orders || []).map(o => ({ id: o.id, pickedUp: o.pickedUp,
+  const slotBonus = calculateTimeSlotFee(s.minute);
+  const carried = (s.orders || []).map(o => ({ id: o.id, fee: +o.deliveryFee.toFixed(2), pickedUp: o.pickedUp,
     pickup: o.pickupLocation, delivery: o.deliveryLocation,
     pickupLocation: o.pickupLocation, deliveryLocation: o.deliveryLocation,
     deadline: o.deadline ?? (o.createdAt + o.timeLimit), timeLimit: o.timeLimit }));
-  const open = (s.availableOrders || []).map(o => ({ id: o.id, fee: +o.deliveryFee.toFixed(2), dist: +o.distance.toFixed(1),
+  const open = (s.availableOrders || []).map(o => ({ id: o.id, fee: +(o.deliveryFee + slotBonus).toFixed(2), dist: +o.distance.toFixed(1),
     pickup: o.pickupLocation, delivery: o.deliveryLocation, timeLimit: +o.timeLimit.toFixed(1),
     createdAt: +o.createdAt.toFixed(1), weight: +o.weight.toFixed(2),
     expiresIn: +Math.max(0, o.createdAt + o.timeLimit - s.minute).toFixed(1) }));   // 还能在库里待几分钟
@@ -184,6 +193,7 @@ for await (const line of rl) {
     response = await sim.executeToolCall({ toolName: name, parameters });
   }
   rounds++;
+  if (name === 'search_nearby_battery_stations') scaleStationEstimates(response, MOVEMENT.speed_multiplier);
   if (ARRIVAL === 'sim_time') {
     // ① 立即清理过期单：保证观察里出现的单一定还没过期
     try { sim.orderGenerator.removeExpiredOrders(sim.getCurrentTime()); } catch { }
@@ -225,6 +235,7 @@ fs.writeFileSync(path.join(OUT, 'protocol.json'), JSON.stringify({
            seed_commit: COMMIT, seed_revealed: false },
   arrival: { mode: ARRIVAL, interval_min: ARRIVAL_MIN, round_tick: ROUND_TICK, batches: arrivalBatches },
   distribution: DIST.config,
+  movement: MOVEMENT,
   clock: { end_minute: SC.end_minute ?? 840, cap: CLOCK_CAP, overrun: fin.minute > (SC.end_minute ?? 840) + 1e-9, rejected },
   timing: {
     t0_iso: new Date(T0).toISOString(), process_iso: new Date(tProcess).toISOString(), end_iso: new Date(tEnd).toISOString(),
