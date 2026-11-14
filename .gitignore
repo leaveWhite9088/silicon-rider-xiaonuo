@@ -1,6 +1,7 @@
 # 运行产物
 runs/*
 !runs/README.md
+.play/
 out/
 tests/_tmp/
 
@@ -22,14 +23,22 @@ __pycache__/
 
 # 盲评运行时产物：包和私有映射不进入仓库
 leaderboard/blind/
-leaderboard/verdicts/*.blind-map.json
-leaderboard/verdicts/*.draft.json
+leaderboard/blind-maps/*
+!leaderboard/blind-maps/README.md
+*.draft.json
 
 # 中心化追加式评审日志与聚合产物
 leaderboard/reviews.jsonl
 leaderboard/reviews.jsonl.lock
 leaderboard/reviews.merged.json
+# 归档批次里的盲评包 / 私有映射 / 评审日志同样不进库（只留 scores.md、verdicts、README）
+leaderboard/归档*/blind/
+leaderboard/归档*/blind-maps/
+leaderboard/归档*/reviews.jsonl
 
 # 本地开发/诊断脚本（临时）
 .dev/
+
+# 选手/评委临时辅助文件（用完必须删除）
+draft/
 

@@ -1,6 +1,6 @@
-# leaderboard/verdicts/
+# leaderboard/verdicts/（最终裁决）
 
-每个**规范模型 ID** 的裁判裁决原始记录，由 `src/scoring/finalize.py` 写入，一个模型一个文件：
+本目录只存放 `src/scoring/finalize.py` 写出的最终裁决 JSON，一个规范模型一个文件。盲评私有映射已拆到 `leaderboard/blind-maps/`，两者不再混放：
 
 ```
 leaderboard/verdicts/<规范模型ID>.json
@@ -44,12 +44,12 @@ leaderboard/reviews.jsonl
 - `review_merge.py` 可按 mean/median 聚合日志；`finalize.py --review-log ... --d-aggregate mean|median` 可直接出榜。
 - 每个 case 的评委人数不固定，可以分批到位。
 
-## 盲评包与私有映射
+## 盲评包与私有映射（另目录）
 
 `judge_pack.py` 会生成：
 
 - `leaderboard/blind/<pack_id>/`：交给评委的唯一路径。内含匿名 `case-*.md`、`README.md`、`RUBRIC.md`、`SUBMIT.md` 和 `pack.json`；不含模型名、A/B/C、运行目录或种子明文。
-- `leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json`：`case_id -> runs/<名>` 的私有映射，只给运行汇总的人 / `finalize.py`，**不能给评委**。映射内同时记录原始 `model` 和 `model_id`。
+- `leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`：`case_id -> runs/<名>` 的私有映射，只给运行汇总的人 / `finalize.py`，**不能给评委**。映射内同时记录原始 `model` 和 `model_id`。
 
 ## 约定
 
