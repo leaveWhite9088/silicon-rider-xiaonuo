@@ -1,5 +1,5 @@
 {
-  "version": "xiaonuo-v1.4",
+  "version": "xiaonuo-v1.5",
   "scene": {
     "start_minute": 360,
     "duration_min": 480,
@@ -21,13 +21,14 @@
     "max": 400
   },
   "scoring": {
-    "anchor_yuan": 500,
+    "anchor_yuan": 700,
     "A_max": 30,
     "B": {
       "b1_max": 5,
       "b2_max": 10,
       "b2_free_min": 8,
-      "b2_halflife_min": 12
+      "b2_halflife_min": 12,
+      "cap_a_ratio": 0.5
     },
     "C": {
       "c1_max": 9,
@@ -53,10 +54,13 @@
       "deliveryHot": 8
     },
     "timeLimit": {
-      "enabled": false,
-      "scale": 1,
+      "enabled": true,
+      "scale": 0.5,
       "cutMinutes": 0,
       "minMinutes": 12
     }
+  },
+  "movement": {
+    "speed_multiplier": 2
   }
 }

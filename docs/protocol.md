@@ -1,4 +1,4 @@
-# 赛制与工具 · silicon-rider-xiaonuo v1.4
+# 赛制与工具 · silicon-rider-xiaonuo v1.5
 
 > 本文件是**给运行者/评审看的协议说明**；被测模型只拿到「一行观察 ↔ 一行工具调用」的交互循环。
 
@@ -6,7 +6,7 @@
 
 - 480 分钟班次：06:00–14:00（引擎时钟 360 → 840）。
 - 100 个节点（餐厅 35、居民区 25、写字楼 11、超市 13、药店 7、换电站 9），网格状路网。
-- 移动耗时 = 距离 / 速度：拥堵 <0.3 时 30 km/h（≈2 分钟/km），0.3–0.5 时 25，0.5–0.7 时 20，≥0.7 时 15；7:00–9:00 地图边缘道路 +0.3 拥堵。
+- 移动耗时 = 距离 / 速度：引擎基准是拥堵 <0.3 时 30 km/h（≈2 分钟/km），0.3–0.5 时 25，0.5–0.7 时 20，≥0.7 时 15；**v1.5 起客户端把速度统一乘以 `movement.speed_multiplier`（当前 2）**，即 60 / 50 / 40 / 30 km/h（≈1 分钟/km）。推行速度 10 km/h、取货 2 分钟、送货 1 分钟、换电 1 分钟、电量 2%/km 不变；7:00–9:00 地图边缘道路 +0.3 拥堵。
 - 电量 2%/km，满电 50 km；换电 1 分钟 + 0.5 元，恢复 100%。
 - 承载：最多 5 单 / 10 kg。取货 2 分钟、送货 1 分钟。
 
@@ -19,7 +19,7 @@
   - 因此同一时刻更可能出现「同店多单」或「同片区多单」，合单与取送排序的收益显著上升。
   - 实现位于 `src/client/order_distribution.mjs`（**未改动 `src/engine/`**），回放脚本复用同一模块，结算可逐字段核验。
   - 生效配置写入 `protocol.json` 的 `distribution` 字段。
-  - v1.5 预留的时限收紧开关 distribution.timeLimit 默认关闭；开启后新单和初始在库单统一按 scale/cutMinutes/minMinutes 调整，并会同时缩短在库过期时间。
+  - v1.5 起 distribution.timeLimit 开启（scale 0.5，minMinutes 12），与速度倍率配套：行驶时间减半，时限同比例收紧，才能保持“时限相对行程”的松紧不变；开启后新单和初始在库单统一按 scale/cutMinutes/minMinutes 调整，并会同时缩短在库过期时间。
 - **在库单会自己过期**：从生成起超过 `timeLimit` 分钟就从池子里消失（不会另行通知）。
   观察里每条在库单都带 `expiresIn`（还能待几分钟），接不接、要不要先跑过去，由你判断。
 - **时限自接单起算**：`deadline = 接单时刻 + timeLimit`。观察里 `carried[].deadline` 就是真值。
@@ -68,7 +68,7 @@
 
 见 `docs/scoring.md`。要点：
 
-- **A30** 净利 / 锚值（configs/benchmark.json，v1.4 默认 500；打穿锚值会报警并转人工复核）。
+- **A30** 净利 / 锚值（configs/benchmark.json，v1.5 暂定 700；打穿锚值会报警并转人工复核）。
 - **B15** = 无效调用 5（失败 + 动作间同参数重复查询）+ **端到端**耗时 10。
 - **C25** = 准时率 9 + 状态一致性 8 + 路径效率 8。
 - **D30** = 匿名盲评包 × 不固定数量的独立评审；评分通过 `judge_submit.py` 追加到中心日志 `leaderboard/reviews.jsonl`，`finalize.py` 按 mean/median 聚合。评委只拿 `leaderboard/blind/<pack_id>/` 路径，包内无模型名/A/B/C。
@@ -96,7 +96,7 @@ python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case
        --judge-id <评委ID> --judge-model <评委模型> \
        --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]"
 
-# 手动汇总出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
+# 手动汇总出榜：从 leaderboard/blind-maps/ 自动发现私有映射和 run，合并多个三轮
 python src/scoring/finalize.py --model Demo \
        --review-log leaderboard/reviews.jsonl \
        --d-aggregate mean --min-judges 1

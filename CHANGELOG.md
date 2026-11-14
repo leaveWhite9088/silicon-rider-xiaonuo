@@ -1,6 +1,32 @@
 # CHANGELOG
 
-## Unreleased — 开发中
+## v1.5 — 2026-11-12
+
+评分平滑 + 行驶速度 ×2（**与 v1.4 及更早成绩不可混排**：B/C 计分、B 封顶、行驶速度、时限、锚值都变了；旧种子已被 v1.4 的 5 个模型用过，新批次需重新生成种子）。
+
+- **行驶速度 ×2**（新增 `src/client/movement_tuning.mjs`，`configs/benchmark.json → movement.speed_multiplier`，当前 2）：不改 `src/engine/`，运行时包装 `CongestionManager.congestionToSpeed`，move_to / estimate_time / 越线预判同步变快；`search_nearby_battery_stations` 的 estimatedTime 在引擎里写死，由客户端同比例换算；`help` 文本（`src/engine/client/system-prompt.js`，唯一允许改的引擎侧文件，仅文本）按 `sim.rulesInfo` 显示实际速度与时限公式。推行速度、取货 / 送货 / 换电耗时、电耗不变。`protocol.json` 新增 `movement`，`verify_replay.mjs` 按它重放（缺省 = 1，兼容旧运行）。目的：每局完成单数由约 16 提高到 20+，降低结果的离散噪声。
+- **观察与事实卡口径补齐**：06:00–07:00 早间 +1 元补贴同步显示在骑手实时观察的待接订单与在途订单中，并计入事实卡接单费用统计；事实卡“单位时间收入”随车速倍率动态换算（2 倍速下由 `fee/(2d+3)` 更新为 `fee/(d+3)`）；事实卡超时滞留统计补算交货动作的 1 分钟耗时，与引擎结算对齐；选手说明补充职业履约要求并明令禁止选手翻阅评分细则与底层代码。
+- **上限工具与模型归并修正**：`tools/bounds.mjs` 的现实路由界 1.5km 接驾耗时按车速倍率动态换算，并计入 06:00–07:00 早间 +1 元补贴；`model_identity` 统一按小写归一化规范模型 ID，避免 Windows 下同模型不同大小写拆行或覆盖裁决文件。
+- **配套时限**：`distribution.timeLimit` 开启，`scale 0.5`（= 1 / 速度倍率）、`minMinutes 12`。timeLimit 同时决定在库单的消失时间，所以订单在库里的寿命也同比缩短。
+- **锚值 500 → 700（暂定）**：速度 ×2 后三个已用种子的 C 现实界均值由 546 升到 768（≈1.4 倍），500×1.4≈700。首批实测后需重标。
+- **版本号** `xiaonuo-v1.4` → `xiaonuo-v1.5`，README / protocol / scoring / design 同步。
+- **旧榜单归档**：v1.4 及更早的 `scores.md`、`verdicts/*.json`、12 个盲评包、7 个私有映射、`reviews.jsonl` 整体移到 `leaderboard/归档v2/`（与 `runs/归档v2/` 对应，附 README）；`leaderboard/scores.md` 重写为 v1.5 榜头、暂无成绩；`.gitignore` 同步忽略归档里的盲评包 / 映射 / 评审日志。`leaderboard/finalize.py` 的自动发现只看 `leaderboard/blind-maps/`，不会再读到旧批次。
+- 参考实测（开发用贪心策略，非正式成绩）：三个种子完成单数 11/9/11 → 22/21/22，轮数约 70 → 145；三局回放核验均一致。
+
+- **B1 / B2 对 A 的封顶放松**（`src/scoring/metrics.py`，同样需在发版时升版本号）：由“`B ≤ 满分 × A/30`”改为“`B ≤ 满分 × min(1, A/(30×cap_a_ratio))`”，`cap_a_ratio` 默认 0.5（`configs/benchmark.json → scoring.B`），即 A≥15 后不再封顶。原因：旧封顶线在 15 行成绩里让 10 行 B1 恰好等于 A/6、让“快但弱”的 B2 等于 A/3，B 层成了 A 的复制品。`B_detail.cap31` 改名 `cap_frac`。新增 `BCapTests`。
+- **B1 / C1 / C2 / C3 台阶改连续**（`src/scoring/metrics.py`，**改完与旧批次分数不可混排，发版时需升版本号**）：沿用原档位的节点，节点之间线性插值，得到 0–10 的“等效级”。原因：一局只有约 15 单、约 120 次调用，旧档位让一次失误就掉 0.5–0.9 分，噪声被档位放大。变化：① 0 失误 / 满准时现在能拿到 10 级（原最高 9 级，好局普遍 +10%）；② C2 只看状态错误次数，不再看占调用的比率；③ C1 罚款按金额连续扣级（15 元 = 原来的 −1 级，最多 −2）；④ `评分.json` 的 `C_levels` 现在是等效级（保留两位小数）。C3 仍用总里程比，“每单绕路均值”的重定义尚未做。新增 `tests/scoring_units.py` 的连续性 / 单调性 / 节点测试。
+- `tools/bounds.mjs` 修正：此前直接用裸引擎生成供给，**没套 v1.4 的午高峰 + 空间聚簇**，算出来的界和实际玩的供给不一致。现在改走与 `rider_client` / `verify_replay` 相同的 `createDistribution` + `spawnBatch`；新增 `--seed-index`（脚本读 `$SR_SEEDS`，输出不带种子明文）、`--protocol`（用该局生效的 distribution 配置）、`--json`（单行输出，引擎的过期清理日志已静音）。对三个已用种子重算：C 现实界 563.9 / 525.7 / 548.2，按文档 ×0.71 得 400 / 373 / 389，低于现行锚值 500；锚值是否调整另议。
+
+- 榜单明细拆分：`finalize.py` 的大榜与各模型成绩表把 B/C/D 拆为明细列（B1 无效 5 / B2 耗时 10；C1 约束 9 / C2 状态 8 / C3 路径 8；D1 挑单 11 / D2 组合 10 / D3 风险 9；A 不拆分），原"端到端均值(分)"列更名为"耗时"（端到端墙钟，分钟，非分数）；`verdicts/<模型>.json` 的 `mean` / `range_half` 同步携带明细（D1/D2/D3 来自评审日志聚合，direct 直给 D 时明细为空）。
+- 评分收口到汇总侧：`finalize.py` 出榜时对每个 run 统一调用 `score_run.py --seed <种子> --no-record` 重算 A/B/C 与事实卡（不再要求选手预先跑评分）；`judge_pack.py` 对缺 factcard 的 run 自动补算。大榜新增"端到端均值(分)"列（取 verdicts 中各 run 的现实耗时均值）。
+- 出榜流程简化：`finalize.py` 的 `--model` 改为可选，不填时自动发现 blind-maps 中所有模型逐个出榜，并覆盖式重新生成 `scores.md`（保留榜头、清空历史成绩段）；新增入口脚本 `leaderboard/finalize.py`（默认带 `--review-log`，其余参数原样转发），一条命令全量出榜到 `leaderboard/`。`scores.md` 顶部新增"大榜"（按各模型总分均值排名，展示 A/B/C/D 与净利均值），各模型成绩表末尾新增"平均"行。
+
+- 文档口径统一：代打规则统一为"禁止脚本代打、只允许逐轮手动玩"（`docs/design.md`、`leaderboard/scores.md` 旧表述已修正）；`scores.md` 榜头去掉版本号标注、锚值更正为 500、记录与榜单生成方式改为"评委评价后追加中心日志 + `finalize.py` 手动生成榜单"。
+- 选手手册删除策略提示：移除"打法提示"整节，以及六条规则中的策略引导（"先到点再接单"技巧、"超市/药店单最肥"），只保留规则机制；选单、合单、换电、收班策略由模型自行发现。
+- 新增目录写入纪律：选手/评委不得随意在仓库写文件，临时辅助文件只能写 `draft/` 且用完必须删除；`.gitignore` 已收录 `draft/`。清理根目录遗留调试残留（`adj.txt`、`adj2.txt`、`locs.txt`、`map_s2_raw.json`）。
+- 新增 token 消耗自报要求：每局结束后由选手写入 `runs/<名>/token_usage.json`（`source=self_report`），只作成本诊断，不参与评分。
+
+- 目录整理：最终裁决 JSON 保留在 `leaderboard/verdicts/`，盲评私有映射统一迁移到 `leaderboard/blind-maps/`；`judge_pack.py` 与 `finalize.py` 的默认发现路径同步，旧的归档批次映射已清理。
 
 - distribution.timeLimit（默认 enabled: false）：可选收紧新单与初始在库单的 timeLimit，支持 scale / cutMinutes / minMinutes，回放共用。
 - tools/timing_audit.py：检测同模型多局时间重叠，提示 B2 墙钟不可比；支持 --json 输出与 --strict 出榜拦截。

@@ -2,7 +2,7 @@
 
 > **一句话**：让 AI 在会动的模拟城市里当 8 小时外卖骑手——在时间、电量、载重、时限，以及“不知道下一单从哪来”的约束下，把这一班的净利做到最大。
 
-模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.4` 赛制。
+模拟引擎是第三方 MIT 组件（`src/engine/`，许可原文见其中 `LICENSE`），本仓库未改动其逻辑。本仓库是 `xiaonuo-v1.5` 赛制。
 
 ## 一局怎么跑
 
@@ -12,7 +12,7 @@
 | --- | --- |
 | 供给 | 每 5 个**模拟分钟**一批新单；查询不推进时间，**刷查询刷不出单** |
 | 时限 | 从**接单**那一刻起算：`deadline = 接单时刻 + timeLimit`；在库单另给 `expiresIn`（还能待几分钟） |
-| 距离 | 2 分钟/km（畅通 30 km/h）；配送费 = 3.65 起步 + 4 km 以上每 km 1 元 + 商品价格费 |
+| 距离 | 1 分钟/km（畅通 60 km/h，v1.5 起行驶速度 ×2，拥堵时 50/40/30）；配送费 = 3.65 起步 + 4 km 以上每 km 1 元 + 商品价格费 |
 | 资源 | 5 单 / 10 kg；电量 2%/km、满电 50 km；换电 1 分钟 + 0.5 元 |
 | 时钟 | 840（14:00）后不再执行动作；400 轮上限 |
 
@@ -34,8 +34,8 @@
 ### A 任务成果（30）— 评“结果达成”
 
 - **净利** = 完成订单实收 − 换电成本。
-- A = 30 × 净利 / 500，封顶 30；500 为 v1.4 暂定锚值（本批最高 425.9，避免封顶）。
-- 超过 500 会标 A_out_of_range 转人工复核，但不会再加分。
+- A = 30 × 净利 / 700，封顶 30；700 为 v1.5 暂定锚值（按速度 ×2 后的 C 现实界相对 v1.4 的比例 ≈1.4 换算，首批实测后重标）。
+- 超过 700 会标 A_out_of_range 转人工复核，但不会再加分。
 - 只看结果，不看过程。
 
 ### B 执行效率（15）— 评“执行效率”
@@ -78,10 +78,8 @@ node tools/session.mjs act --session Demo-s1 '{"toolName":"move_to","parameters"
 # 或批量跑（写 policy，一条命令三局并发并评分；仅开发调试，不能作为正式成绩）
 node tools/play.mjs --model Demo --policy examples/policy-greedy.mjs --seeds 1,2,3 --score
 
-# 跑完 3 局后：生成评分/事实卡（play --score 已做可跳过）
-python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1 --no-record
-python src/scoring/score_run.py runs/Demo-s2 Demo --seed-index 2 --no-record
-python src/scoring/score_run.py runs/Demo-s3 Demo --seed-index 3 --no-record
+# 评分/事实卡不用手动跑：judge_pack 缺卡自动补算，finalize 出榜时带种子统一重算
+# （开发自检仍可跑 python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1 --no-record）
 
 # 生成匿名盲评包和私有映射
 python src/scoring/judge_pack.py --model Demo
@@ -95,16 +93,19 @@ python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case
 python src/scoring/review_merge.py --log leaderboard/reviews.jsonl \
   --out leaderboard/reviews.merged.json --aggregate mean
 
-# 手动汇总出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
-python src/scoring/finalize.py --model Demo \
-  --review-log leaderboard/reviews.jsonl \
-  --d-aggregate mean --min-judges 1
+# 手动汇总出榜：从 leaderboard/blind-maps/ 自动发现私有映射和 run，合并多个三轮
+python leaderboard/finalize.py
+# 一键出榜：自动发现所有模型并逐个汇总，覆盖式重新生成 scores.md（保留榜头）
+# 只出单个模型：python leaderboard/finalize.py --model Demo
+# 也可用原脚本：python src/scoring/finalize.py --model Demo \
+#   --review-log leaderboard/reviews.jsonl --d-aggregate mean --min-judges 1
 # 部分 run 尚未评分时，可加 --allow-partial，只汇总已评分 run
 ```
 
 - **排名**：[`leaderboard/scores.md`](leaderboard/scores.md)
   （GitHub：`https://github.com/leaveWhite9088/silicon-rider-xiaonuo/blob/main/leaderboard/scores.md`）
 - **裁决留档**：`leaderboard/verdicts/<模型>.json`
+- **盲评私有映射**：`leaderboard/blind-maps/<模型ID>.<pack_id>.blind-map.json`（只给汇总者，不交给评委）
 
 ## 目录
 
@@ -117,9 +118,9 @@ tools/          harness（一句话开跑）、种子、物理界、回放核验
 examples/       示例 policy（可直接改用）
 docs/           protocol（规则）· scoring（计分）· design（设计与限制）
 runs/           每次运行一个子目录（过程数据，不进库）
-leaderboard/    榜单与裁决
+leaderboard/    榜单、最终裁决与私有盲评映射（verdicts/、blind-maps/）
 ```
 
 ## 版本
 
-`xiaonuo-v1.4`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。
+`xiaonuo-v1.5`，变更见 `CHANGELOG.md`；`src/engine/` 的第三方许可见 `src/engine/LICENSE`。

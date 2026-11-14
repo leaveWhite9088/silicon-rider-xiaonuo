@@ -14,14 +14,14 @@
 
 | 信任域 | 典型承担者 | 可以做什么 | 绝对不能做什么 |
 | --- | --- | --- | --- |
-| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、逐轮手动调用工具、读观察、规划路线；跑完 3 局后运行官方 `score_run.py --no-record` 和 `judge_pack.py` | 决定种子、编写或运行代打脚本、运行 `finalize.py`、写排行榜/最终裁决、修改评分/打包脚本 |
+| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、逐轮手动调用工具、读观察、规划路线；跑完 3 局后运行官方 `score_run.py --no-record` 和 `judge_pack.py` | 决定种子、查阅评分细则或底层代码、编写或运行代打脚本、运行 `finalize.py`、写排行榜/最终裁决、修改评分/打包脚本 |
 | **评委/汇总** | 独立评委 / 运行汇总脚本的人 | 看匿名包、提交 D、评委完成后手动汇总入榜 | 替选手操作工具 |
 
 ### 三种部署形态，你是哪一种？
 
 | 形态 | 谁起局/喂工具 | 谁打 t0 | 谁跑官方评分 | 你该读 |
 | --- | --- | --- | --- | --- |
-| **A. 单代理**（agent 有 shell，自己起局自己玩，本仓库最常见） | 你（选手） | 你在开始前自记（进程启动或 `--t0` 传入） | 你跑 `score_run.py --no-record` + `judge_pack.py`；评委后由你手动 `finalize.py` | §1、§3 |
+| **A. 单代理**（agent 有 shell，自己起局自己玩，本仓库最常见） | 你（选手） | 你在开始前自记（进程启动或 `--t0` 传入） | 你跑 `score_run.py --no-record` + `judge_pack.py`；评委后由你手动 `finalize.py` | 只读 §1（选手）；仅维护仓库时读 §3 |
 | **B. 双代理**（一个进程当运行器，另一个模型只回 JSON） | 运行器 | 运行器 | 运行器 | §1 或 §2 |
 | **C. 官方运行器**（模型只有 API，没有 shell） | 运行器 | 运行器 | 运行器 | §1 |
 
@@ -32,6 +32,12 @@
 3. **最终出榜在评委完成后手动做**：本单次模式允许你运行 `score_run.py --no-record` 和 `judge_pack.py`；`finalize.py`、`leaderboard/scores.md` 和最终裁决等评委提交后再手动运行。
 
 > 本单次模式没有额外协调角色：选手先做，评委后做，最后手动运行汇总脚本。
+
+### 目录写入纪律（选手与评委通用）
+
+- **不得在仓库里随意新建或修改文件**：不改引擎、驱动、评分/打包脚本、文档、榜单，也不在根目录或其他目录留调试残留（地图转储、邻接表、观察快照等）。
+- 确实需要写辅助文件（临时笔记、中间稿）时，**只能写到 `draft/` 目录**；用完必须删除，`draft/` 在收工时应为空或不存在。
+- 正式产物只走规定路径：`runs/<名>/` 由驱动与官方评分脚本写入；token 自报按 §1「执行者收尾」的格式写；评委只通过 `judge_submit.py` 追加评审日志，不落地任何其他文件。
 
 > **本版玩法硬规则：只允许逐轮手动玩。**
 > 不得编写、生成、修改或运行任何自行编写的脚本，包括策略脚本、代打脚本、自动决策程序、自动工具调用循环；不得使用 `tools/play.mjs --policy`、`tools/harness.mjs --policy` 或其他自动化方式代打。
@@ -68,13 +74,15 @@ node tools/session.mjs stop  --session deepseek-v4-s1
 
 本单次模式要求执行者自己完成官方脚本评分和匿名打包，不要求跨批次复用：
 
-1. 对 3 个 run 分别生成 A/B/C 和事实卡（不写排行榜）：
+0. **每局结束后记录 token 消耗（自报）**：把宿主/agent 累计的 token 用量写入 `runs/<名>-sX/token_usage.json`：
 
-```sh
-python src/scoring/score_run.py runs/<名>-s1 <名> --seed-index 1 --no-record
-python src/scoring/score_run.py runs/<名>-s2 <名> --seed-index 2 --no-record
-python src/scoring/score_run.py runs/<名>-s3 <名> --seed-index 3 --no-record
-```
+   ```json
+   {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "source": "self_report", "note": "宿主统计口径说明"}
+   ```
+
+   宿主拿不到用量就把数值写 `null` 并在 `note` 里说明原因。该数据只作成本诊断，**不参与 A/B/C/D 评分**；可信度与自报 `t0` 同级，不得虚报。
+
+1. **A/B/C 与事实卡不需要手动跑**：`judge_pack.py` 会对缺卡的 run 自动补算，`finalize.py` 出榜时会带种子统一重算并核对承诺（`score_run.py --no-record` 仍可用于开发自检）。
 
 2. 生成匿名盲评包：
 
@@ -85,13 +93,13 @@ python src/scoring/judge_pack.py --model <名>
 输出：
 
 - `leaderboard/blind/<pack_id>/`：交给评委的唯一路径；
-- `leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json`：私有映射，不交给评委。
+- `leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`：私有映射，不交给评委。
 
 3. 把 `leaderboard/blind/<pack_id>/` 路径交给评委；**不要**把 `blind-map.json`、`reviews.jsonl`、`runs/` 或 A/B/C 交给评委。
 
 4. 执行者不要运行 `finalize.py`，不要写 `leaderboard/scores.md`；评委提交后由你手动运行汇总脚本出榜。
 
-你在一场 480 分钟（06:00–14:00）的外卖班次里跑单，目标是**班次净利最大**。
+你在一场 480 分钟（06:00–14:00）的外卖班次里跑单，核心目标是**尽可能多赚班次净利，同时像一名专业老骑手一样高质量跑完这一班**：接下的单尽量准时送到、收班前别把单烂在手里，路线规划顺畅少绕冤枉路，工具调用干脆准确（避免报错试错或无意义的重复查询），并且动作利落别拖延耗时。
 
 ### 输入输出协议
 
@@ -114,31 +122,25 @@ python src/scoring/judge_pack.py --model <名>
 ### 必须记住的六条规则
 
 1. **时限从接单那一刻起算**：`deadline = 接单时刻 + timeLimit`；观察里 `carried[].deadline` 就是真值。
-2. **接单不要求你在店里，取货要求**。所以"先骑到店门口、再接单、再取货"，把空驶挪到时限之外——合法且关键。
+2. **接单不要求你在店里，取货要求**。
 3. **新单按模拟时间到**（每 5 分钟一批）；查询工具**不推进时间**，刷查询刷不出订单。
 4. **时钟 840（14:00）后不再执行动作**；越线动作会被拒绝（`--clock-cap reject`）或白跑（默认）。
 5. 上限 400 轮；承载 5 单 / 10 kg；电量 2%/km（满电 50 km）；换电 1 分钟 + 0.5 元。
-6. 配送费 = 3.65 起步 + 距离费（4 km 以上每 km 1 元）+ 商品价格费（超市/药店单最肥）+ 06:00–07:00 接单 +1 元。
+6. 配送费 = 3.65 起步 + 距离费（4 km 以上每 km 1 元）+ 商品价格费 + 06:00–07:00 接单 +1 元。
 
 ### 允许 / 禁止
 
 - ✅ 任意顺序使用 13 个工具；合单、拒单、提前换电、等好单；但每一步都必须读取当前观察后手动决定并逐轮调用。
 - ❌ 读或推断**种子**（`$SR_SEEDS` 指向的明文、`protocol.json` 的 `seed_commit`、其他 `runs/*/trace.jsonl`）；❌ 推演/重现未来订单流；❌ 改引擎/驱动；❌ 伪造轨迹；❌ 写结算或榜单。
+- ❌ **查阅评分细则或底层实现**：处于选手身份时，只允许阅读本文 §0–§1，严禁读取 `README.md`、`docs/`（含 `docs/scoring.md`）、`configs/benchmark.json`、`src/scoring/`、`src/engine/`、`leaderboard/` 及本文 §2–§4，不得探查计分公式、分值权重或阈值档位（收尾时仅按命令调用官方脚本，不得阅读其源码）。
 - ❌ 编写或运行任何自行编写的策略/代打脚本、自动决策程序或自动工具调用循环；❌ 使用 `play.mjs --policy` / `harness --policy` 或其他自动化方式代打（正式成绩无效；官方评分/打包脚本除外）。
 - 判罚：种子承诺不匹配 = 作废；轨迹会**用原引擎逐条重放**，结算必须一致。
-
-### 打法提示（经验，不是规则）
-
-- 挑"单位时间收入"高的单：`fee ÷ (2×(接驾km + 送餐km) + 3分)`；≥0.7 好单，<0.5 只有顺路才接。
-- 合单看**最紧的那单**：从接单到第一单送达必须 < 该单时限 − 3 分；取餐点扎堆、送餐点同向才值得合。
-- 电量按"下一趟之前够不够"规划；剩续航 < 本趟里程 + 5 km 就先换电。
-- 班末 20 分钟只接能送完的单：最后一趟必须 13:58 前送完。
 
 ---
 
 ## 2. 评委与手动汇总
 
-评委或汇总者需要读这节；如果你只是选手，跳到 §3。
+评委或汇总者需要读这节；如果你只是选手，到此为止，禁止继续往下读。
 
 ### 标准流程（评委与手动汇总）
 
@@ -238,7 +240,7 @@ python src/scoring/finalize.py --model <名> \
 
 ### 4.2 同一模型多个三轮
 
-- 每跑一个三轮批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json`。
+- 每跑一个三轮批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`。
 - 汇总按**规范模型 ID**：末尾批次后缀（如 `-h1` / `-s1`）会归并，`（Max）` 等推理强度标记保留；无法自动识别时用 `--model-id` 显式指定。
 - `finalize.py` 自动发现该规范模型 ID 的所有映射和对应 run，按 run 合并计算均值；也可以用 `--runs` / `--blind-map` 显式指定。
 - 默认要求所有自动发现的 run 都有 D 评分；加 `--allow-partial` 可只汇总已有评分的 run。
@@ -261,10 +263,12 @@ python src/scoring/finalize.py --model <名> \
 | `src/scoring/*.py` | 开发者 | 评分/汇总 |
 | `runs/<名>/{trace,result,protocol}` | 驱动 | 评分/汇总、回放核验 |
 | `runs/<名>/{factcard,评分}` | 评分脚本 | 评审、评分/汇总 |
+| `runs/<名>/token_usage.json` | 选手自报 | 汇总/成本诊断（不参与评分） |
+| `draft/` | 选手/评委（临时辅助文件） | 仅写入者本人；用完必须删除，收工时应为空或不存在 |
 | `leaderboard/scores.md` | 评分脚本（评分/汇总） | 所有人 |
 | `seeds.json`（仓库外） | 评测环境 | **任何人都不该在选手可达目录** |
 | `leaderboard/blind/<pack_id>/` | `judge_pack.py` | 评委（只给这个目录路径） |
-| `leaderboard/verdicts/<规范模型ID>.<pack_id>.blind-map.json` | `judge_pack.py` | 运行 finalize 的人 / `finalize.py`，**评委不可见** |
+| `leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json` | `judge_pack.py` | 运行 finalize 的人 / `finalize.py`，**评委不可见** |
 | `leaderboard/reviews.jsonl` | `judge_submit.py` | 运行汇总的人 / `review_merge.py` / `finalize.py`，**评委不可读** |
 | `src/scoring/judge_submit.py` | 开发者 | 评委提交入口（只追加、不回显他人分数） |
 | `src/scoring/review_merge.py` | 开发者 | 汇总中心日志 |
@@ -278,6 +282,7 @@ python src/scoring/score_run.py runs/Demo Demo --seed <种子>      # 评分（�
 python src/scoring/judge_pack.py --model Demo                # 生成匿名盲评包
 python src/scoring/judge_submit.py --pack-dir <包目录> ...    # 评委追加评分（中心日志）
 python src/scoring/review_merge.py --log leaderboard/reviews.jsonl --aggregate mean  # 汇总查看
+python leaderboard/finalize.py                                   # 一键全量出榜（覆盖生成 scores.md + verdicts）
 python src/scoring/aggregate.py --prefix runs/Demo               # 多种子汇总
 node tools/bounds.mjs --seed <种子>                              # 锚值标定
 node tools/verify_replay.mjs runs/<名> --seed <种子>              # 回放核验（结算须逐字段一致）
