@@ -76,6 +76,7 @@ if not a.model:
     if not a.dry_run and LEADERBOARD.exists():
         head = LEADERBOARD.read_text(encoding="utf-8").split("### 最终成绩")[0]
         head = head.split("<!-- 大榜 -->")[0].split("## 大榜（按各模型总分均值排名）")[0]
+        head = head.rstrip() + "\n\n"
         LEADERBOARD.write_text(head, encoding="utf-8")
         print("scores.md 将覆盖式重新生成（保留榜头，清空历史成绩段）")
     failed = []
@@ -93,9 +94,9 @@ if not a.model:
             if not vf.exists():
                 continue
             board.append(json.loads(vf.read_text(encoding="utf-8")))
-        board.sort(key=lambda v: -(v.get("mean", {}).get("total") or 0))
+        board.sort(key=lambda v: (-(v.get("mean", {}).get("total") or 0), v.get("model", "")))
         blines = ["## 大榜（按各模型总分均值排名）", "",
-                  "| 排名 | 模型 | 总分(100) | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | 净利均值 | 耗时 | 已评run |",
+                  "| 排名 | 模型 | 总分(100) | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | 净利均值 | 耗时(分钟) | 已评run |",
                   "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
 
         def cell(m, k):
@@ -113,8 +114,27 @@ if not a.model:
         blines += ["", ""]
         text = LEADERBOARD.read_text(encoding="utf-8")
         head, sep, body = text.partition("### 最终成绩")
-        LEADERBOARD.write_text(head + "\n".join(blines) + sep + body, encoding="utf-8")
-        print("\n大榜已按总分均值排名写入 scores.md 顶部")
+        head = head.rstrip() + "\n\n"
+        sec_by_model = {}
+        extra_secs = []
+        if sep:
+            raw_secs = (sep + body).split("\n### 最终成绩")
+            for idx, s in enumerate(raw_secs):
+                chunk = (s if idx == 0 else "### 最终成绩" + s).strip()
+                if not chunk:
+                    continue
+                first_line = chunk.splitlines()[0]
+                if first_line.startswith("### 最终成绩 · "):
+                    m_part = first_line[len("### 最终成绩 · "):].split(" — ", 1)[0].strip()
+                    sec_by_model[m_part] = chunk
+                else:
+                    extra_secs.append(chunk)
+        ordered_secs = [sec_by_model.pop(v["model"]) for v in board if v["model"] in sec_by_model]
+        ordered_secs.extend(sec_by_model.values())
+        ordered_secs.extend(extra_secs)
+        detail_text = ("\n\n".join(ordered_secs) + "\n") if ordered_secs else ""
+        LEADERBOARD.write_text(head + "\n".join(blines) + detail_text, encoding="utf-8")
+        print("\n大榜与各模型明细已按总分均值排名写入 scores.md")
     if failed:
         print(f"\n以下模型出榜失败：{', '.join(failed)}")
         sys.exit(1)
@@ -416,7 +436,7 @@ def f2(x):
     return f"{x:.2f}" if isinstance(x, (int, float)) else "-"
 
 lines = [f"\n### 最终成绩 · {model_id} — {datetime.datetime.now():%Y-%m-%d %H:%M}", "",
-         "| 种子 | 净利 | 单数 | 耗时 | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | D评委 | 总分(100) | 承诺 | 回放 |",
+         "| 种子 | 净利 | 单数 | 耗时(分钟) | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | D评委 | 总分(100) | 承诺 | 回放 |",
          "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
 for r in rows:
     lines.append(f"| {r['seed_commit']} | {r['profit']:.1f} | {r['completed']} | {r['endToEndMin']:.1f} "

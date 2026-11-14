@@ -32,6 +32,7 @@ try:
 except Exception:
     SCORING = {}
 PROFIT_ANCHOR = float(SCORING.get("anchor_yuan", 350.0))   # A 的分母（换种子必须重标，见 tools/bounds.mjs）
+SUSPECT_SCRIPT_MS = int(SCORING.get("suspect_script_ms", 50))
 A_MAX = float(SCORING.get("A_max", 30.0))
 _B = SCORING.get("B", {}) or {}
 B1_MAX = float(_B.get("b1_max", 5.0))
@@ -352,7 +353,7 @@ def analyze_work(work: Path):
     ts = [x.get("t") for x in tools if isinstance(x.get("t"), (int, float))]
     gaps = sorted(b - a for a, b in zip(ts, ts[1:]) if b >= a)
     m["medianCallGapMs"] = round(gaps[len(gaps) // 2], 1) if gaps else None
-    m["suspectScript"] = bool(gaps and gaps[len(gaps) // 2] < 300)
+    m["suspectScript"] = bool(gaps and gaps[len(gaps) // 2] < SUSPECT_SCRIPT_MS)
 
     # ---------- 结束行为 ----------
     m["earlyQuit"] = m["termination"] == "model_stopped_early"
@@ -480,7 +481,7 @@ def factcard(m, case_id=None):
     L.append(f"- 成绩：完成 {m.get('completed')} 单（准时 {m.get('onTime')}，准时率 {None if m.get('onTimeRate') is None else round(m['onTimeRate'],3)}），平均超时 {None if m.get('avgOvertime') is None else round(m['avgOvertime'],2)} 分钟，收工时在途未送 {m.get('carryingAtEnd')} 单")
     L.append(f"- 口径：新单生成={m.get('arrivalMode')}（{m.get('arrivalBatches')} 批）；B2 计时={m.get('b2Basis')}（端到端 {round((m.get('endToEndSeconds') or 0)/60,1)} 分钟 / 驱动 {(m.get('wallSeconds') or 0)/60:.1f} 分钟）；t0 来源={m.get('t0Source')}；种子承诺 {str(m.get('seedCommit'))[:12]}…；越线={m.get('overrun')}；被拒调用={m.get('rejectedCalls')}")
     L.append(f"- 行动量：工具调用 {m.get('calls')} 次（失败 {m.get('failed')}，其中状态类 {m.get('state_errors')}、容量类 {m.get('capacity_errors')}、其他 {m.get('other_errors')}；动作间同参数重复查询 {m.get('repeated')}），接单 {m.get('nAccepts')} 次（成功 {m.get('nAcceptOK')}），换电 {m.get('swaps')} 次，最低电量 {m.get('min_battery')}%")
-    L.append(f"- 调用节奏：中位调用间隔 {m.get('medianCallGapMs')} ms" + ("（<300ms，疑似脚本代打）" if m.get('suspectScript') else ""))
+    L.append(f"- 调用节奏：中位调用间隔 {m.get('medianCallGapMs')} ms" + (f"（<{SUSPECT_SCRIPT_MS}ms，疑似脚本代打）" if m.get('suspectScript') else ""))
     L.append(f"- 节奏：班中新单到达 {m.get('nTicks')} 波；查询类调用 {m.get('nQueries')} 次，平均每次成功接单前有 {m.get('queriesPerAccept')} 次查询")
     L.append(f"- 路线：总行驶 {None if m.get('totalDistance') is None else round(m['totalDistance'],1)}，已完成订单取送距离之和 {None if m.get('optimalDistance') is None else round(m['optimalDistance'],1)}，**路径效率 = 总行驶距离 / 已完成订单取送距离之和 = {None if m.get('pathEff') is None else round(m['pathEff'],2)}**（C3 唯一指标，不使用空驶率修正）；多单同送交付占比 {m.get('batchRate')}（送单 {len(m.get('deliverEvents') or [])} 次，其中携带≥2单 {m.get('multiDeliveries')} 次）")
     L.append(f"- 订单履约：接单后整班从未处理（死单）{m.get('nDead')} 单" + (f"，最长挂单 {m.get('maxCarriedMinutes')} 分钟" if m.get('nDead') else "") + f"；接单→送达超出引擎估计时限 {m.get('nSlow')} 单" + (f"（最大超出 {m['slowOrders'][0]['over']} 分钟）" if m.get('nSlow') else "") + f"；收工时在途未送 {m.get('carryingAtEnd')} 单")

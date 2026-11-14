@@ -209,6 +209,31 @@ class FeeAndSpeedMetricTests(unittest.TestCase):
             self.assertAlmostEqual(m["slowOrders"][0]["duration"], 15.5)
             self.assertAlmostEqual(m["slowOrders"][0]["over"], 0.5)
 
+    def test_suspect_script_threshold_allows_fast_models(self):
+        import json
+        for gap_ms, expect_suspect in ((263, False), (20, True)):
+            with tempfile.TemporaryDirectory() as td:
+                work = Path(td)
+                (work / "protocol.json").write_text("{}", encoding="utf-8")
+                (work / "result.json").write_text(json.dumps({
+                    "status": "completed", "termination": "scene_completed", "rounds": 2,
+                    "snapshot": {"minute": 362.0, "remainingMinutes": 478.0, "battery": 98, "orders": []},
+                    "score": {"totalProfit": 0.0, "onTimeRate": 1.0, "completedOrders": 0, "onTimeOrders": 0,
+                              "pathEfficiency": 1.0, "totalDistance": 0.0, "optimalDistance": 0.0,
+                              "totalPenalty": 0.0, "totalRevenue": 0.0, "averageOvertime": 0.0, "batterySwaps": 0},
+                }), encoding="utf-8")
+                trace_lines = [
+                    {"type": "tool", "round": 1, "t": 1000, "call": {"name": "wait", "arguments": {"minutes": 1}},
+                     "response": {"success": True}, "before": {"minute": 360.0, "orders": []}, "after": {"minute": 361.0, "orders": []}},
+                    {"type": "tool", "round": 2, "t": 1000 + gap_ms, "call": {"name": "wait", "arguments": {"minutes": 1}},
+                     "response": {"success": True}, "before": {"minute": 361.0, "orders": []}, "after": {"minute": 362.0, "orders": []}},
+                ]
+                (work / "trace.jsonl").write_text("\n".join(json.dumps(x) for x in trace_lines), encoding="utf-8")
+                m = metrics.analyze_work(work)
+                self.assertEqual(m["suspectScript"], expect_suspect, f"gap={gap_ms}")
+                fc = metrics.factcard(m)
+                self.assertEqual("疑似脚本代打" in fc, expect_suspect, f"factcard gap={gap_ms}")
+
 
 if __name__ == "__main__":
     unittest.main()
