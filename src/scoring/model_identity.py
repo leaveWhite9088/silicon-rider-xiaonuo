@@ -31,26 +31,26 @@ _BATCH_SUFFIX_RE = re.compile(
 
 
 def canonical_model_id(name: str) -> str:
-    """Return the canonical model id used for leaderboard grouping."""
+    """Return the canonical lowercase model id used for leaderboard grouping."""
     text = (name or "").strip()
     if not text:
         return ""
     stripped = _BATCH_SUFFIX_RE.sub("", text)
-    return stripped or text
+    return (stripped or text).lower()
 
 
 def matches_batch_run(model_name: str, run_name: str) -> bool:
-    """Whether run_name belongs to the explicitly named batch model_name."""
-    model_name = (model_name or "").strip()
-    run_name = (run_name or "").strip()
-    if not model_name or not run_name:
+    """Whether run_name belongs to the explicitly named batch model_name (case-insensitive)."""
+    m = (model_name or "").strip().lower()
+    r = (run_name or "").strip().lower()
+    if not m or not r:
         return False
-    if run_name == model_name:
+    if r == m:
         return True
-    if run_name.startswith(model_name + "-") or run_name.startswith(model_name + "_"):
+    if r.startswith(m + "-") or r.startswith(m + "_"):
         return True
     # e.g. model_name=...-h matches ...-h1 / ...-h2, but model_name=...-h1 does not match ...-h10.
-    if model_name[-1].isalpha():
-        return re.match(r"^" + re.escape(model_name) + r"\d+(?:[-_].*)?$", run_name) is not None
+    if m[-1].isalpha():
+        return re.match(r"^" + re.escape(m) + r"\d+(?:[-_].*)?$", r) is not None
     return False
 

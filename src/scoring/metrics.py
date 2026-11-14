@@ -38,6 +38,7 @@ B1_MAX = float(_B.get("b1_max", 5.0))
 B2_MAX = float(_B.get("b2_max", 10.0))
 B2_FREE = float(_B.get("b2_free_min", 8.0))
 B2_HALF = float(_B.get("b2_halflife_min", 12.0))
+B_CAP_A_RATIO = max(1e-6, float(_B.get("cap_a_ratio", 0.5)))   # A ≥ A_max × 该比例 后，B1/B2 不再被 A 封顶
 _C = SCORING.get("C", {}) or {}
 C1_MAX = float(_C.get("c1_max", 9.0))
 C2_MAX = float(_C.get("c2_max", 8.0))
@@ -74,12 +75,45 @@ def classify_failed_calls(failed):
     return state_err, cap_err
 
 
+def time_slot_fee(minute):
+    """与引擎 fee-calculator.js 一致的接单时段补贴（如 06:00–07:00 接单 +1 元）。"""
+    if not isinstance(minute, (int, float)):
+        return 0.0
+    hour = int(minute // 60)
+    if 0 < hour <= 2:
+        return 0.5
+    if 2 < hour <= 6:
+        return 1.0
+    if 22 < hour <= 24:
+        return 0.3
+    return 0.0
+
+
+def calc_fee_per_minute(fee, distance, speed_multiplier=1.0):
+    """D1 主指标：纯取送服务时间下界（畅通每公里 2/倍率 分钟 + 取餐 2 分钟 + 送餐 1 分钟）。"""
+    mult = float(speed_multiplier) if isinstance(speed_multiplier, (int, float)) and speed_multiplier > 0 else 1.0
+    min_per_km = 2.0 / mult
+    return round(fee / (min_per_km * distance + 3.0), 3)
+
+
+def fee_per_minute_label(speed_multiplier=1.0):
+    mult = float(speed_multiplier) if isinstance(speed_multiplier, (int, float)) and speed_multiplier > 0 else 1.0
+    mpk = 2.0 / mult
+    if abs(mpk - 1.0) < 1e-6:
+        return "fee/(d+3)"
+    if abs(mpk - round(mpk)) < 1e-6:
+        return f"fee/({int(round(mpk))}d+3)"
+    return f"fee/({mpk:g}d+3)"
+
+
 def analyze_work(work: Path):
     r = json.loads((work / "result.json").read_text(encoding="utf-8"))
     sc = r.get("score") or {}
     snap = r.get("snapshot") or {}
     proto = json.loads((work / "protocol.json").read_text(encoding="utf-8"))
     tools, model_lines, ticks, initial = parse_trace(work)
+    raw_mult = ((proto.get("movement") or {}).get("speed_multiplier"))
+    speed_mult = float(raw_mult) if isinstance(raw_mult, (int, float)) and raw_mult > 0 else 1.0
 
     m = {"profit": sc.get("totalProfit"), "onTimeRate": sc.get("onTimeRate"),
          "completed": sc.get("completedOrders"), "onTime": sc.get("onTimeOrders"),
@@ -90,7 +124,7 @@ def analyze_work(work: Path):
          "engine_invalid": sc.get("invalidToolCalls"), "engine_calls": sc.get("totalToolCalls"),
          "endMinute": snap.get("minute"), "remainingMin": snap.get("remainingMinutes"),
          "endBattery": snap.get("battery"), "carryingAtEnd": len(snap.get("orders") or []),
-         "rounds": r.get("rounds"), "status": r.get("status")}
+         "rounds": r.get("rounds"), "status": r.get("status"), "speedMultiplier": speed_mult}
 
     # ---------- 无效调用（官方口径：失败 + 两次动作之间重复的同参数查询） ----------
     seen_q, last_action_round, failed, dups = {}, -10**9, [], []
@@ -178,24 +212,30 @@ def analyze_work(work: Path):
         ok = bool((x.get("response") or {}).get("success"))
         open_orders = b.get("availableOrders") or []
         chosen = next((o for o in open_orders if o.get("id") == oid), None)
+        slot_bonus = time_slot_fee(b.get("minute"))
         alts = []
         for o in open_orders:
             if o.get("id") == oid:
                 continue
-            alts.append({"id": o["id"], "fee": round(o["deliveryFee"], 2), "dist": round(o["distance"], 2),
+            alt_fee = o["deliveryFee"] + slot_bonus
+            alts.append({"id": o["id"], "fee": round(alt_fee, 2), "dist": round(o["distance"], 2),
                          "timeLimit": round(o.get("timeLimit", 0), 1),
-                          "feePerKm": round(o["deliveryFee"] / o["distance"], 2) if o.get("distance") else None})
+                         "feePerKm": round(alt_fee / o["distance"], 2) if o.get("distance") else None})
         entry = {"round": x.get("round"), "minute": round(b.get("minute", 0), 1), "orderId": oid,
                  "success": ok, "openOrders": len(open_orders)}
         if chosen:
-            entry.update(fee=round(chosen["deliveryFee"], 2), dist=round(chosen["distance"], 2),
+            resp_order = (((x.get("response") or {}).get("data") or {}).get("order")) or {}
+            actual_fee = (resp_order["deliveryFee"]
+                          if (ok and isinstance(resp_order.get("deliveryFee"), (int, float)))
+                          else (chosen["deliveryFee"] + slot_bonus))
+            entry.update(fee=round(actual_fee, 2), dist=round(chosen["distance"], 2),
                          timeLimit=round(chosen.get("timeLimit", 0), 1),
                          battery=round(b.get("battery", 0), 1), carrying=len(b.get("orders") or []),
                          weight=round(b.get("weight", 0), 2))
             if chosen.get("distance"):
-                entry["feePerKm"] = round(chosen["deliveryFee"] / chosen["distance"], 2)
-            # D1 主指标：单位时间收入（不含接驾，属于下界），不随池子大小漂移
-            entry["feePerMinute"] = round(chosen["deliveryFee"] / (2 * chosen["distance"] + 3), 3)
+                entry["feePerKm"] = round(actual_fee / chosen["distance"], 2)
+            # D1 主指标：单位时间收入（不含接驾，属于下界，随车速倍率缩放），不随池子大小漂移
+            entry["feePerMinute"] = calc_fee_per_minute(actual_fee, chosen["distance"], speed_mult)
             entry["poolSize"] = len(open_orders)
             if alts:
                 by_fee = sorted([a["fee"] for a in alts], reverse=True)
@@ -253,15 +293,18 @@ def analyze_work(work: Path):
         elif name == "pickup_food" and ok and oid:
             picked.add(oid)
         elif name == "deliver_food" and ok and oid:
-            delivered[oid] = b.get("minute")
+            bm = b.get("minute")
+            delivered[oid] = (bm + 1.0) if isinstance(bm, (int, float)) else (x.get("after") or {}).get("minute")
     end_carried = {o.get("id") if isinstance(o, dict) else o for o in (snap.get("orders") or [])}
     dead, slow, end_detail = [], [], []
     for oid, acc in accept_ok.items():
         if oid in delivered:
             dur = None if (delivered[oid] is None or acc["minute"] is None) else delivered[oid] - acc["minute"]
             tl = acc.get("timeLimit")
-            slow.append({"orderId": oid, "duration": round(dur, 1) if dur is not None else None, "timeLimit": tl,
-                         "over": None if (dur is None or tl is None) else round(dur - tl, 1)})
+            raw_over = None if (dur is None or tl is None) else (dur - tl)
+            if raw_over is not None and raw_over > 1e-6:
+                over_val = round(raw_over, 1) if round(raw_over, 1) > 0 else round(raw_over, 2)
+                slow.append({"orderId": oid, "duration": round(dur, 1), "timeLimit": tl, "over": over_val})
             continue
         carried = None if (acc["minute"] is None or m.get("endMinute") is None) else m["endMinute"] - acc["minute"]
         entry = {"orderId": oid, "acceptMinute": acc["minute"], "picked": oid in picked,
@@ -269,7 +312,6 @@ def analyze_work(work: Path):
                  "inEndSnapshot": oid in end_carried}
         (dead if not entry["picked"] else end_detail).append(entry)
     dead = sorted(dead, key=lambda e: -(e["carriedMinutes"] or 0))
-    slow = [s_ for s_ in slow if s_["over"] is not None and s_["over"] > 0]
     slow.sort(key=lambda e: -e["over"])
     # 幽灵链：accept 失败后仍对同一订单 pickup/deliver
     ghost_chain = {}
@@ -318,14 +360,33 @@ def analyze_work(work: Path):
 
 
 # ---------------- 客观分 ----------------
+def _interp(x, pts):
+    """分段线性插值。pts 按 x 升序；x 超出两端时取端点值。
+
+    B1/C1/C2/C3 原来都是“跨过阈值就掉一整级”的台阶；一局只有十几单、约 120 次调用时，
+    多一次失误就掉 0.5~0.9 分，噪声被档位放大。这里沿用原档位的节点，只是在节点之间连续过渡。
+    返回值仍是 0–10 的“等效级”，分数 = 满分 × 等效级 / 10。
+    """
+    if x <= pts[0][0]:
+        return float(pts[0][1])
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return float(pts[-1][1])
+
+
+# 各项的节点（x → 等效级）。原档位的整数级就是节点本身，0 失误/满准时现在可以拿到 10。
+B1_POINTS = [(0, 10), (0.01, 9), (0.02, 8), (0.03, 7), (0.05, 6), (0.07, 5), (0.10, 4), (0.15, 3), (0.30, 2)]
+C1_POINTS = [(0, 2), (0.25, 3), (0.40, 4), (0.60, 5), (0.70, 6), (0.80, 7), (0.90, 8), (0.95, 9), (1.0, 10)]
+C2_POINTS = [(0, 10), (1, 9), (2, 8), (4, 7), (8, 6), (15, 4), (30, 3)]
+C3_POINTS = [(0.60, 10), (0.75, 9), (0.90, 8), (1.05, 7), (1.20, 6), (1.45, 5), (1.80, 4), (2.40, 3), (3.50, 2), (5.0, 1)]
+
+
 def level_from_invalid(ratio):
-    """官方 6.1 档位：1%内9级、2%内8、3%内7、5%内6、7%内5、10%内4、15%内3、更多2。"""
+    """B1：无效调用率 → 等效级（0–10，连续）。1% 对应 9，2% 对应 8，… 15% 对应 3，30% 起为 2。"""
     if ratio is None:
         return None
-    for th, lv in ((0.01, 9), (0.02, 8), (0.03, 7), (0.05, 6), (0.07, 5), (0.10, 4), (0.15, 3)):
-        if ratio <= th:
-            return lv
-    return 2
+    return _interp(ratio, B1_POINTS)
 
 
 def score_work(m):
@@ -338,8 +399,9 @@ def score_work(m):
         s["A_outcome"] = round(max(0.0, min(A_MAX, a_raw)), 2)
         s["A_out_of_range"] = a_raw > A_MAX
     outcome_level = None if s["A_outcome"] is None else round(s["A_outcome"] / (A_MAX / 10))  # 30 分制 -> 0-10 级
-    # B 执行效率 15（无效 5 + 耗时 10，各点分别以 满分×成果/31 为上限）
-    outcome31 = None if s["A_outcome"] is None else s["A_outcome"] * 31 / A_MAX
+    # B 执行效率 15（无效 5 + 耗时 10）。封顶只在成果偏低时生效：A 达到 A_max × B_CAP_A_RATIO 后不再封顶。
+    # 旧口径封顶线是 A/A_max 的整比例，A≈21 时 B1 被压到 3.5，15 行成绩里 10 行的 B1 正好等于 A/6，等于把 A 又算了一遍。
+    cap_frac = None if s["A_outcome"] is None else min(1.0, s["A_outcome"] / (A_MAX * B_CAP_A_RATIO))
     lv_inv = level_from_invalid(m["invalid_ratio"])
     b1 = None if lv_inv is None else round(B1_MAX * lv_inv / 10, 2)
     b2 = None
@@ -347,20 +409,20 @@ def score_work(m):
     if b2sec:
         minutes = b2sec / 60
         b2 = round(B2_MAX * (0.5 ** (max(0.0, minutes - B2_FREE) / B2_HALF)), 2)
-    if outcome31 is not None:
+    if cap_frac is not None:
         if b1 is not None:
-            b1 = round(min(b1, B1_MAX * outcome31 / 31), 2)
+            b1 = round(min(b1, B1_MAX * cap_frac), 2)
         if b2 is not None:
-            b2 = round(min(b2, B2_MAX * outcome31 / 31), 2)
+            b2 = round(min(b2, B2_MAX * cap_frac), 2)
     b_raw = None if (b1 is None or b2 is None) else round(b1 + b2, 2)
     s["B_efficiency"] = b_raw
-    s["B_detail"] = {"B1_invalid5": b1, "B2_time10": b2, "cap31": None if outcome31 is None else round(outcome31, 2)}
+    s["B_detail"] = {"B1_invalid5": b1, "B2_time10": b2, "cap_frac": None if cap_frac is None else round(cap_frac, 3)}
     # C 操作质量 25（C1 约束 9 + C2 状态 8 + C3 路径 8）
-    s["C1_constraint9"] = c1_level(m) * C1_MAX / 10
-    s["C2_state8"] = c2_level(m) * C2_MAX / 10
-    s["C3_path8"] = c3_level(m) * C3_MAX / 10
+    s["C1_constraint9"] = round(c1_level(m) * C1_MAX / 10, 2)
+    s["C2_state8"] = round(c2_level(m) * C2_MAX / 10, 2)
+    s["C3_path8"] = round(c3_level(m) * C3_MAX / 10, 2)
     s["C_quality"] = round(s["C1_constraint9"] + s["C2_state8"] + s["C3_path8"], 2)
-    s["C_levels"] = {"C1": c1_level(m), "C2": c2_level(m), "C3": c3_level(m)}
+    s["C_levels"] = {"C1": round(c1_level(m), 2), "C2": round(c2_level(m), 2), "C3": round(c3_level(m), 2)}  # 等效级 0–10
     s["D_judged"] = None  # 裁判层待填
     s["total_v2_partial"] = (None if s["A_outcome"] is None or s["B_efficiency"] is None
                              else round(s["A_outcome"] + s["B_efficiency"] + s["C_quality"], 2))
@@ -372,47 +434,17 @@ def c1_level(m):
     otr = m.get("onTimeRate")
     if otr is None or not m.get("completed"):
         return 1 if (m.get("completed") or 0) > 0 else 0
-    if otr >= 0.95:
-        lv = 9
-    elif otr >= 0.9:
-        lv = 8
-    elif otr >= 0.8:
-        lv = 7
-    elif otr >= 0.7:
-        lv = 6
-    elif otr >= 0.6:
-        lv = 5
-    elif otr >= 0.4:
-        lv = 4
-    elif otr >= 0.25:
-        lv = 3
-    else:
-        lv = 2
-    if (m.get("penalty") or 0) > 15:
-        lv -= 1
+    lv = _interp(otr, C1_POINTS)
+    # 罚款：15 元扣 1 级（与原“>15 扣 1 级”在 15 元处一致），按金额连续增加，最多扣 2 级
+    lv -= min((m.get("penalty") or 0) / 15.0, 2.0)
     if m.get("battery_stalls"):
         lv -= 2
-    return max(0, min(9, lv))
+    return max(0.0, min(10.0, lv))
 
 
 def c2_level(m):
     """C2 状态一致性（0-10）：对不存在/过期订单操作等状态错误。"""
-    se = m.get("state_errors", 0)
-    calls = max(1, m.get("calls", 1))
-    rate = se / calls
-    if se == 0:
-        return 9
-    if se <= 1 and rate <= 0.01:
-        return 8
-    if se <= 2:
-        return 7
-    if se <= 4:
-        return 6
-    if se <= 8:
-        return 5
-    if se <= 15:
-        return 4
-    return 3
+    return _interp(m.get("state_errors", 0), C2_POINTS)
 
 
 def c3_level(m):
@@ -424,23 +456,7 @@ def c3_level(m):
     pe = m.get("pathEff")
     if pe is None:
         return None
-    if pe <= 0.75:
-        return 9
-    if pe <= 0.90:
-        return 8
-    if pe <= 1.05:
-        return 7
-    if pe <= 1.20:
-        return 6
-    if pe <= 1.45:
-        return 5
-    if pe <= 1.80:
-        return 4
-    if pe <= 2.40:
-        return 3
-    if pe <= 3.50:
-        return 2
-    return 1
+    return _interp(pe, C3_POINTS)
 
 
 # ---------------- 事实卡 ----------------
@@ -523,7 +539,8 @@ def factcard(m, case_id=None):
         L.append("- 注意：费用分位以“当时在库集合”为分母，池子越大同样的单分位越低（会随时间漂移），**D1 主看下面两条绝对指标**")
         if fpm:
             med = fpm[len(fpm) // 2]
-            L.append(f"- **单位时间收入 fee/(2d+3)**：中位 {med:.2f} 元/分、均值 {sum(fpm) / len(fpm):.2f} 元/分（不含接驾，属保守下界；与池子大小无关）")
+            fpm_label = fee_per_minute_label(m.get("speedMultiplier", 1.0))
+            L.append(f"- **单位时间收入 {fpm_label}**：中位 {med:.2f} 元/分、均值 {sum(fpm) / len(fpm):.2f} 元/分（不含接驾，属保守下界；与池子大小无关）")
         if fpk:
             mfpk = round(sum(a["feePerKmPercentile"] for a in fpk) / len(fpk), 3)
             L.append(f"- 单位距离费用视角：平均分位 {mfpk}（高 = 短单单价好）；其中费用分位低但单位距离费用分位高（≥0.6）的 {sum(1 for a in fpk if a['feePercentile'] < 0.4 and a['feePerKmPercentile'] >= 0.6)} 次——这类是'低价短单'，需结合距离解读")

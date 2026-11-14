@@ -3,10 +3,10 @@
 生成匿名盲评包。评委只拿到 leaderboard/blind/<pack_id>/ 这一个目录路径；
 包内不出现模型名、A/B/C、运行目录或种子明文。
 评委通过 judge_submit.py 把评分追加到中心日志 leaderboard/reviews.jsonl。
-模型到 case_id 的私有映射写到 leaderboard/verdicts/<model_id>.<pack_id>.blind-map.json。
+模型到 case_id 的私有映射写到 leaderboard/blind-maps/<model_id>.<pack_id>.blind-map.json。
 """
 from pathlib import Path
-import sys, json, argparse, secrets, datetime
+import sys, json, re, argparse, secrets, datetime
 from model_identity import canonical_model_id, matches_batch_run
 
 try:
@@ -16,7 +16,7 @@ except Exception:
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-VERDICTS = ROOT / "leaderboard" / "verdicts"
+BLIND_MAPS = ROOT / "leaderboard" / "blind-maps"
 BLIND_ROOT = ROOT / "leaderboard" / "blind"
 
 ap = argparse.ArgumentParser()
@@ -27,7 +27,7 @@ ap.add_argument("--print", dest="do_print", action="store_true", help="兼容旧
 a = ap.parse_args()
 
 raw_model = a.model.strip()
-model_id = (a.model_id or canonical_model_id(raw_model)).strip()
+model_id = (a.model_id.strip().lower() if a.model_id else canonical_model_id(raw_model)).strip()
 if not model_id:
     print("--model/--model-id 不能为空")
     sys.exit(1)
@@ -39,7 +39,7 @@ else:
     if not runs_root.exists():
         print("找不到 runs/ 目录")
         sys.exit(1)
-    if canonical_model_id(raw_model) != raw_model:
+    if canonical_model_id(raw_model) != raw_model.lower():
         # --model 本身带批次后缀时，只打包这一批；要合并同模型多批请用 --runs 或传基础模型名。
         runs = sorted(
             p for p in runs_root.iterdir()
@@ -50,6 +50,12 @@ else:
             p for p in runs_root.iterdir()
             if p.is_dir() and canonical_model_id(p.name) == model_id
         )
+# 缺 factcard.md 的 run 先统一补算（不带种子，仅生成事实卡与评分；种子承诺在 finalize 时核验）
+import subprocess
+for r in runs:
+    if not (r / "factcard.md").exists() and (r / "protocol.json").exists() and (r / "result.json").exists():
+        subprocess.run([sys.executable, str(ROOT / "src" / "scoring" / "score_run.py"), str(r), model_id, "--no-record"],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
 runs = [r for r in runs if (r / "factcard.md").exists()]
 # 显式给 --model-id 且显式给 --runs 时，由调用者负责模型归属，允许任意批次后缀。
 bad_runs = [] if (a.model_id and a.runs) else [r.name for r in runs if canonical_model_id(r.name) != model_id]
@@ -99,7 +105,11 @@ mapping_cases = {}
 for i, r in enumerate(runs, 1):
     case_id = f"case-{i:02d}"
     text = (r / "factcard.md").read_text(encoding="utf-8")
-    text = text.replace(a.model, "匿名模型").replace(r.name, "匿名运行")
+    if r.name:
+        text = re.sub(re.escape(r.name), "匿名运行", text, flags=re.IGNORECASE)
+    for m_tok in {a.model, model_id}:
+        if m_tok:
+            text = re.sub(re.escape(m_tok), "匿名模型", text, flags=re.IGNORECASE)
     lines = text.splitlines()
     if lines and lines[0].startswith("# "):
         lines = lines[1:]
@@ -137,8 +147,8 @@ python src/scoring/judge_submit.py \\
 """
 (pack_dir / "SUBMIT.md").write_text(SUBMIT, encoding="utf-8")
 
-VERDICTS.mkdir(parents=True, exist_ok=True)
-map_path = VERDICTS / f"{model_id}.{pack_id}.blind-map.json"
+BLIND_MAPS.mkdir(parents=True, exist_ok=True)
+map_path = BLIND_MAPS / f"{model_id}.{pack_id}.blind-map.json"
 map_obj = {
     "model": a.model,
     "model_id": model_id,

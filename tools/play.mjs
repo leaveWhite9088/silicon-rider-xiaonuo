@@ -76,7 +76,8 @@ if (SCORE) {
 
 console.log(`\n产物目录：runs/${MODEL}-s{${SEEDS.join(',')}}`);
 console.log('下一步：');
-console.log(`  python src/scoring/judge_pack.py --model ${MODEL} --print      # 打印事实卡、生成待填草稿`);
+console.log(`  python src/scoring/judge_pack.py --model ${MODEL}`);
+console.log('  # 评委通过 judge_submit.py 把 D 分追加到 leaderboard/reviews.jsonl');
 console.log(`  python src/scoring/finalize.py --model ${MODEL} --runs `
   + SEEDS.map(i => `runs/${runName(i)}`).join(' ')
-  + ` --seed-indexes ${SEEDS.join(',')} --d-file leaderboard/verdicts/${MODEL}.draft.json`);
+  + ` --seed-indexes ${SEEDS.join(',')} --review-log leaderboard/reviews.jsonl --d-aggregate mean --min-judges 1`);

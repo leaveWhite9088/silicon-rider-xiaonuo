@@ -6,13 +6,17 @@
         --runs runs/Demo-s1 runs/Demo-s2 runs/Demo-s3 \
         --seed-indexes 1,2,3 \
         --review-log leaderboard/reviews.jsonl \
-        --blind-map leaderboard/verdicts/Demo.blind-map.json \
+        --blind-map leaderboard/blind-maps/Demo.blind-map.json \
         --d-aggregate mean --min-judges 1
 
 也可直接用明文/直接给分：
     ... --seeds 111,222,333 --d 21,22.5,23
 
 可选：--no-replay（跳过回放核验，仅调试）、--dry-run（只打印不写榜）。
+
+不带 --model 时：自动发现 leaderboard/blind-maps/ 里所有模型逐个出榜，
+并覆盖式重新生成 scores.md（保留榜头，清空历史成绩段）。
+等效入口脚本：python leaderboard/finalize.py（默认带 --review-log，参数原样转发）。
 
 流程：
   1) 核对每个种子的承诺（sha256("sr:"+seed) == protocol.scene.seed_commit）
@@ -36,9 +40,10 @@ import review_log
 from model_identity import canonical_model_id
 LEADERBOARD = ROOT / "leaderboard" / "scores.md"
 VERDICTS = ROOT / "leaderboard" / "verdicts"
+BLIND_MAPS = ROOT / "leaderboard" / "blind-maps"
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--model", required=True)
+ap.add_argument("--model", default=None, help="规范模型名；不填时按 leaderboard/blind-maps/ 自动发现所有模型，逐个一次性出榜")
 ap.add_argument("--model-id", default=None, help="汇总分组用的规范模型名；默认从 --model 去掉批次后缀")
 ap.add_argument("--runs", nargs="*", default=None, help="要汇总的 run 目录；不填时从 blind-map 自动发现")
 ap.add_argument("--seed-indexes", default=None, help="预注册序号，逗号分隔（推荐）")
@@ -48,17 +53,78 @@ ap.add_argument("--review-log", default=None, help="中心化追加式评审日�
 ap.add_argument("--d-file", default=None, help="兼容旧盲评草稿 JSON")
 ap.add_argument("--d-aggregate", choices=("mean", "median"), default="mean", help="从评审日志聚合 D 的方式")
 ap.add_argument("--min-judges", type=int, default=1, help="每个 case 至少需要多少位评委")
-ap.add_argument("--blind-map", action="append", default=None, help="盲评私有映射 JSON，可重复；不填时按规范模型 ID 自动发现 leaderboard/verdicts/*.blind-map.json")
+ap.add_argument("--blind-map", action="append", default=None, help="盲评私有映射 JSON，可重复；不填时按规范模型 ID 自动发现 leaderboard/blind-maps/*.blind-map.json")
 ap.add_argument("--no-replay", action="store_true", help="跳过回放核验（不建议）")
 ap.add_argument("--allow-partial", action="store_true", help="允许部分 run 尚无评分；汇总只使用已评分 run")
 ap.add_argument("--dry-run", action="store_true", help="只打印，不写榜")
 a = ap.parse_args()
 
+if not a.model:
+    discovered = []
+    for mf in sorted(BLIND_MAPS.glob("*.blind-map.json")):
+        try:
+            bm = json.loads(mf.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        mid = canonical_model_id(bm.get("model_id") or bm.get("model", ""))
+        if mid and mid not in discovered:
+            discovered.append(mid)
+    if not discovered:
+        print("未指定 --model，且 leaderboard/blind-maps/ 里没有可发现的模型")
+        sys.exit(1)
+    print(f"未指定 --model，一次性出榜 {len(discovered)} 个模型：{', '.join(discovered)}")
+    if not a.dry_run and LEADERBOARD.exists():
+        head = LEADERBOARD.read_text(encoding="utf-8").split("### 最终成绩")[0]
+        head = head.split("<!-- 大榜 -->")[0].split("## 大榜（按各模型总分均值排名）")[0]
+        LEADERBOARD.write_text(head, encoding="utf-8")
+        print("scores.md 将覆盖式重新生成（保留榜头，清空历史成绩段）")
+    failed = []
+    for mid in discovered:
+        print(f"\n===== {mid} =====")
+        r = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--model", mid, *sys.argv[1:]])
+        if r.returncode != 0:
+            failed.append(mid)
+    if not a.dry_run:
+        board = []
+        for mid in discovered:
+            if mid in failed:
+                continue
+            vf = VERDICTS / f"{mid}.json"
+            if not vf.exists():
+                continue
+            board.append(json.loads(vf.read_text(encoding="utf-8")))
+        board.sort(key=lambda v: -(v.get("mean", {}).get("total") or 0))
+        blines = ["## 大榜（按各模型总分均值排名）", "",
+                  "| 排名 | 模型 | 总分(100) | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | 净利均值 | 耗时 | 已评run |",
+                  "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+
+        def cell(m, k):
+            x = m.get(k) if isinstance(m, dict) else None
+            return f"{x:.2f}" if isinstance(x, (int, float)) else "-"
+
+        for i, v in enumerate(board, 1):
+            m = v["mean"]
+            s = v.get("summary", {})
+            e2e = [r["endToEndMin"] for r in v.get("runs", []) if isinstance(r.get("endToEndMin"), (int, float))]
+            e2e_mean = f"{statistics.mean(e2e):.1f}" if e2e else "-"
+            blines.append(f"| {i} | {v['model']} | **{m['total']:.2f}** | {cell(m, 'A')} | {cell(m, 'B1')} | {cell(m, 'B2')} "
+                          f"| {cell(m, 'C1')} | {cell(m, 'C2')} | {cell(m, 'C3')} | {cell(m, 'D1')} | {cell(m, 'D2')} | {cell(m, 'D3')} "
+                          f"| {m['profit']:.1f} | {e2e_mean} | {s.get('runs_scored', '-')} |")
+        blines += ["", ""]
+        text = LEADERBOARD.read_text(encoding="utf-8")
+        head, sep, body = text.partition("### 最终成绩")
+        LEADERBOARD.write_text(head + "\n".join(blines) + sep + body, encoding="utf-8")
+        print("\n大榜已按总分均值排名写入 scores.md 顶部")
+    if failed:
+        print(f"\n以下模型出榜失败：{', '.join(failed)}")
+        sys.exit(1)
+    sys.exit(0)
+
 if a.min_judges < 1:
     print("--min-judges 必须 >= 1")
     sys.exit(1)
 
-model_id = (a.model_id or canonical_model_id(a.model)).strip()
+model_id = (a.model_id.strip().lower() if a.model_id else canonical_model_id(a.model)).strip()
 if not model_id:
     print("--model/--model-id 不能为空")
     sys.exit(1)
@@ -67,12 +133,12 @@ map_args = a.blind_map or []
 map_files = [Path(p).resolve() for p in map_args]
 if not map_files:
     map_files = []
-    for mf in sorted(VERDICTS.glob("*.blind-map.json")):
+    for mf in sorted(BLIND_MAPS.glob("*.blind-map.json")):
         try:
             bm = json.loads(mf.read_text(encoding="utf-8"))
         except Exception:
             continue
-        map_model_id = bm.get("model_id") or canonical_model_id(bm.get("model", ""))
+        map_model_id = canonical_model_id(bm.get("model_id") or bm.get("model", ""))
         if map_model_id == model_id:
             map_files.append(mf)
 map_files = list(dict.fromkeys(map_files))
@@ -85,7 +151,7 @@ for mf in map_files:
         print(f"找不到盲评映射：{mf}")
         sys.exit(1)
     bm = json.loads(mf.read_text(encoding="utf-8"))
-    map_model_id = bm.get("model_id") or canonical_model_id(bm.get("model", ""))
+    map_model_id = canonical_model_id(bm.get("model_id") or bm.get("model", ""))
     if map_model_id and map_model_id != model_id:
         print(f"盲评映射模型 {bm.get('model') or map_model_id}（规范 ID {map_model_id}）与 --model {a.model}（规范 ID {model_id}）不一致")
         sys.exit(1)
@@ -164,6 +230,7 @@ d_source = None
 d_aggregate = None
 d_counts = []
 ds = []
+d_dims = []  # 每个种子一个 {"D1":x,"D2":y,"D3":z} 或 None（direct 直给分时无拆分）
 case_ids = []
 pack_ids = []
 runs_total_all = len(runs)
@@ -192,7 +259,7 @@ if a.review_log:
         if not cid or not pack_id:
             if a.allow_partial:
                 print(f"!! {r.name} 不在任何映射中，跳过")
-                ds.append(None); case_ids.append(None); pack_ids.append(None); d_counts.append(0)
+                ds.append(None); d_dims.append(None); case_ids.append(None); pack_ids.append(None); d_counts.append(0)
                 continue
             print(f"私有映射里没有 {r.name}")
             sys.exit(1)
@@ -200,7 +267,7 @@ if a.review_log:
         if not g or g["judge_count"] < a.min_judges:
             if a.allow_partial:
                 print(f"!! {r.name} 尚无足够评分，跳过")
-                ds.append(None); case_ids.append(cid); pack_ids.append(pack_id); d_counts.append(0)
+                ds.append(None); d_dims.append(None); case_ids.append(cid); pack_ids.append(pack_id); d_counts.append(0)
                 continue
             if not g:
                 print(f"评审日志里没有 pack={pack_id} case={cid}（run={r.name}）")
@@ -208,6 +275,7 @@ if a.review_log:
                 print(f"{r.name} 只有 {g['judge_count']} 位评委，少于 --min-judges {a.min_judges}")
             sys.exit(1)
         ds.append(g["D"])
+        d_dims.append({"D1": g["D1"], "D2": g["D2"], "D3": g["D3"]})
         case_ids.append(cid)
         pack_ids.append(pack_id)
         d_counts.append(g["judge_count"])
@@ -228,21 +296,24 @@ elif a.d_file:
         if not item:
             if a.allow_partial:
                 print(f"!! {r.name} 草稿里没有评分，跳过")
-                ds.append(None); case_ids.append(cid); pack_ids.append(pack_id); d_counts.append(0)
+                ds.append(None); d_dims.append(None); case_ids.append(cid); pack_ids.append(pack_id); d_counts.append(0)
                 continue
             print(f"草稿里没有 {r.name}" + (f"（期望 case_id={cid}）" if cid else "；如果是盲评草稿，请给 --blind-map"))
             sys.exit(1)
         totals = []
+        dim_vals = {"D1": [], "D2": [], "D3": []}
         for j in item.get("judges", []):
             if all(isinstance(j.get(k), (int, float)) for k in ("D1", "D2", "D3")):
                 if not (0 <= j["D1"] <= 11 and 0 <= j["D2"] <= 10 and 0 <= j["D3"] <= 9):
                     print(f"{r.name} 的 D 分超出范围：D1≤11 / D2≤10 / D3≤9")
                     sys.exit(1)
                 totals.append(j["D1"] + j["D2"] + j["D3"])
+                for k in dim_vals:
+                    dim_vals[k].append(j[k])
         if not totals or len(totals) < a.min_judges:
             if a.allow_partial:
                 print(f"!! {r.name} 尚无足够评分，跳过")
-                ds.append(None); case_ids.append(item.get("case_id") or cid); pack_ids.append(pack_id); d_counts.append(len(totals))
+                ds.append(None); d_dims.append(None); case_ids.append(item.get("case_id") or cid); pack_ids.append(pack_id); d_counts.append(len(totals))
                 continue
             if not totals:
                 print(f"{r.name} 的 D 还没填（D1/D2/D3）")
@@ -250,12 +321,14 @@ elif a.d_file:
                 print(f"{r.name} 只有 {len(totals)} 位有效评委，少于 --min-judges {a.min_judges}")
             sys.exit(1)
         ds.append(round(statistics.median(totals), 2))
+        d_dims.append({k: round(statistics.median(v), 2) for k, v in dim_vals.items()})
         case_ids.append(item.get("case_id") or cid)
         pack_ids.append(pack_id)
         d_counts.append(len(totals))
 elif a.d:
     d_source = "direct"
     ds = [float(x) for x in a.d.split(",")]
+    d_dims = [None] * len(runs)
     case_ids = [None] * len(runs)
     pack_ids = [run_to_pack.get(r.name) for r in runs]
     d_counts = [None] * len(runs)
@@ -277,6 +350,7 @@ if not scored_indices:
 runs = [runs[i] for i in scored_indices]
 seeds = [seeds[i] for i in scored_indices]
 ds = [ds[i] for i in scored_indices]
+d_dims = [d_dims[i] for i in scored_indices]
 case_ids = [case_ids[i] for i in scored_indices]
 pack_ids = [pack_ids[i] for i in scored_indices]
 d_counts = [d_counts[i] for i in scored_indices]
@@ -285,11 +359,17 @@ if not (len(runs) == len(seeds) == len(ds)):
     print(f"--runs / 种子 / D 数量必须一致（现在 {len(runs)}/{len(seeds)}/{len(ds)}）"); sys.exit(1)
 
 rows, errors = [], []
-for run, seed, d, case_id, judge_count, pack_id in zip(runs, seeds, ds, case_ids, d_counts, pack_ids):
+for run, seed, d, dims, case_id, judge_count, pack_id in zip(runs, seeds, ds, d_dims, case_ids, d_counts, pack_ids):
     name = run.name
-    missing = [f for f in ("protocol.json", "result.json", "评分.json") if not (run / f).exists()]
+    missing = [f for f in ("protocol.json", "result.json") if not (run / f).exists()]
     if missing:
-        errors.append(f"{name}: 缺少 {', '.join(missing)}（先跑 score_run.py）"); continue
+        errors.append(f"{name}: 缺少 {', '.join(missing)}"); continue
+    rr = subprocess.run([sys.executable, str(ROOT / "src" / "scoring" / "score_run.py"), str(run), model_id,
+                         "--seed", str(seed), "--no-record"],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if rr.returncode != 0 or not (run / "评分.json").exists():
+        tail = (((rr.stdout or "") + (rr.stderr or "")).strip())[-400:]
+        errors.append(f"{name}: score_run.py 统一重算失败：{tail}"); continue
 
     proto = json.loads((run / "protocol.json").read_text(encoding="utf-8"))
     res = json.loads((run / "result.json").read_text(encoding="utf-8"))
@@ -309,12 +389,17 @@ for run, seed, d, case_id, judge_count, pack_id in zip(runs, seeds, ds, case_ids
             errors.append(f"{name}: 回放与结算不一致（成绩作废）"); continue
 
     A, B, C = sc.get("A_outcome"), sc.get("B_efficiency"), sc.get("C_quality")
+    bd = sc.get("B_detail") or {}
+    dd = dims or {}
     rows.append({
         "run": name, "pack_id": pack_id, "case_id": case_id, "judge_count": judge_count, "rounds": res.get("rounds"), "seed_commit": str(commit)[:12], "seed_verified": True, "replay_ok": replay_ok,
         "profit": round(float((res.get("score") or {}).get("totalProfit") or 0), 2),
         "completed": (res.get("score") or {}).get("completedOrders"),
         "endToEndMin": round(float(res.get("endToEndSeconds") or 0) / 60, 1),
         "A": A, "B": B, "C": C, "D": d, "total": round((A or 0) + (B or 0) + (C or 0) + d, 2),
+        "B1": bd.get("B1_invalid5"), "B2": bd.get("B2_time10"),
+        "C1": sc.get("C1_constraint9"), "C2": sc.get("C2_state8"), "C3": sc.get("C3_path8"),
+        "D1": dd.get("D1"), "D2": dd.get("D2"), "D3": dd.get("D3"),
     })
 
 if errors:
@@ -327,15 +412,26 @@ def agg(key):
     vals = [r[key] for r in rows if isinstance(r[key], (int, float))]
     return (statistics.mean(vals), (max(vals) - min(vals)) / 2) if vals else (None, None)
 
+def f2(x):
+    return f"{x:.2f}" if isinstance(x, (int, float)) else "-"
+
 lines = [f"\n### 最终成绩 · {model_id} — {datetime.datetime.now():%Y-%m-%d %H:%M}", "",
-         "| 种子 | 净利 | 单数 | 端到端 | A(30) | B(15) | C(25) | D(30) | D评委 | 总分(100) | 承诺 | 回放 |",
-         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+         "| 种子 | 净利 | 单数 | 耗时 | A(30) | B1无效(5) | B2耗时(10) | C1约束(9) | C2状态(8) | C3路径(8) | D1挑单(11) | D2组合(10) | D3风险(9) | D评委 | 总分(100) | 承诺 | 回放 |",
+         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
 for r in rows:
-    lines.append(f"| {r['seed_commit']} | {r['profit']:.1f} | {r['completed']} | {r['endToEndMin']:.1f} 分 "
-                 f"| {r['A']:.2f} | {r['B']:.2f} | {r['C']:.2f} | {r['D']:.2f} | {r['judge_count'] if r['judge_count'] is not None else '-'} | {r['total']:.2f} "
+    lines.append(f"| {r['seed_commit']} | {r['profit']:.1f} | {r['completed']} | {r['endToEndMin']:.1f} "
+                 f"| {f2(r['A'])} | {f2(r['B1'])} | {f2(r['B2'])} | {f2(r['C1'])} | {f2(r['C2'])} | {f2(r['C3'])} "
+                 f"| {f2(r['D1'])} | {f2(r['D2'])} | {f2(r['D3'])} | {r['judge_count'] if r['judge_count'] is not None else '-'} | {r['total']:.2f} "
                  f"| {'✓' if r['seed_verified'] else '✗'} | {'✓' if r['replay_ok'] in (True, None) else '✗'} |")
 mA, rA = agg("A"); mB, rB = agg("B"); mC, rC = agg("C")
 mD, rD = agg("D"); mT, rT = agg("total"); mP, rP = agg("profit")
+mCompleted, _ = agg("completed"); mE2E, _ = agg("endToEndMin")
+mB1, rB1 = agg("B1"); mB2, rB2 = agg("B2")
+mC1, rC1 = agg("C1"); mC2, rC2 = agg("C2"); mC3, rC3 = agg("C3")
+mD1, rD1 = agg("D1"); mD2, rD2 = agg("D2"); mD3, rD3 = agg("D3")
+lines.append(f"| **平均** | {mP:.1f} | {mCompleted:.1f} | {mE2E:.1f} "
+             f"| {f2(mA)} | {f2(mB1)} | {f2(mB2)} | {f2(mC1)} | {f2(mC2)} | {f2(mC3)} "
+             f"| {f2(mD1)} | {f2(mD2)} | {f2(mD3)} | - | **{mT:.2f}** | - | - |")
 lines += ["",
           f"**均值 ± 极差**：净利 {mP:.1f} ±{rP:.1f}｜A {mA:.2f} ±{rA:.2f}｜B {mB:.2f} ±{rB:.2f}"
           f"｜C {mC:.2f} ±{rC:.2f}｜D {mD:.2f} ±{rD:.2f}｜**总分 {mT:.2f} ±{rT:.2f}**", "",
@@ -358,8 +454,10 @@ VERDICTS.mkdir(parents=True, exist_ok=True)
     "d_aggregate": d_aggregate,
     "summary": {"runs_total": runs_total_all, "runs_scored": len(rows), "judge_reviews": judge_reviews_all, "rounds_total": rounds_total_all},
     "runs": rows,
-    "mean": {"profit": mP, "A": mA, "B": mB, "C": mC, "D": mD, "total": mT},
-    "range_half": {"profit": rP, "A": rA, "B": rB, "C": rC, "D": rD, "total": rT},
+    "mean": {"profit": mP, "A": mA, "B": mB, "C": mC, "D": mD, "total": mT,
+             "B1": mB1, "B2": mB2, "C1": mC1, "C2": mC2, "C3": mC3, "D1": mD1, "D2": mD2, "D3": mD3},
+    "range_half": {"profit": rP, "A": rA, "B": rB, "C": rC, "D": rD, "total": rT,
+                   "B1": rB1, "B2": rB2, "C1": rC1, "C2": rC2, "C3": rC3, "D1": rD1, "D2": rD2, "D3": rD3},
 }, ensure_ascii=False, indent=1), encoding="utf-8")
 with LEADERBOARD.open("a", encoding="utf-8") as f:
     f.write(text + "\n")
