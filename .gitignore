@@ -31,10 +31,6 @@ leaderboard/blind-maps/*
 leaderboard/reviews.jsonl
 leaderboard/reviews.jsonl.lock
 leaderboard/reviews.merged.json
-# 归档批次里的盲评包 / 私有映射 / 评审日志同样不进库（只留 scores.md、verdicts、README）
-leaderboard/归档*/blind/
-leaderboard/归档*/blind-maps/
-leaderboard/归档*/reviews.jsonl
 
 # 本地开发/诊断脚本（临时）
 .dev/
