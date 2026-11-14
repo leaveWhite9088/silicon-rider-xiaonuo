@@ -68,7 +68,7 @@
 
 见 `docs/scoring.md`。要点：
 
-- **A30** 净利 / 锚值（configs/benchmark.json，v1.5 暂定 700；打穿锚值会报警并转人工复核）。
+- **A30** 净利 / 锚值（configs/benchmark.json，v1.5 为 600；打穿锚值会报警并转人工复核）。
 - **B15** = 无效调用 5（失败 + 动作间同参数重复查询）+ **端到端**耗时 10。
 - **C25** = 准时率 9 + 状态一致性 8 + 路径效率 8。
 - **D30** = 匿名盲评包 × 不固定数量的独立评审；评分通过 `judge_submit.py` 追加到中心日志 `leaderboard/reviews.jsonl`，`finalize.py` 按 mean/median 聚合。评委只拿 `leaderboard/blind/<pack_id>/` 路径，包内无模型名/A/B/C。

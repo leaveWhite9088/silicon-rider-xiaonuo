@@ -189,7 +189,7 @@ python src/scoring/finalize.py --model <名> \
 | 只有 `trace.jsonl`，没有 `result.json` | 驱动被强杀；重跑 |
 | `seed_verified=false` | 种子传错 → 该次作废 |
 | `A_out_of_range=true` | 净利打穿锚值 → 人工复核，考虑重标锚 |
-| 事实卡标"疑似脚本代打" | 中位调用间隔 <300ms；本版禁止脚本代打，该次成绩无效，需人工复核 |
+| 事实卡标"疑似脚本代打" | 中位调用间隔 <50ms（由 `configs/benchmark.json` 配置）；本版禁止脚本代打，该次成绩无效，需人工复核 |
 | 分数异常偏低 | 看 B2 是否被端到端拖累、C1 准时率、C3 绕路 |
 | B2 明显异常 | 跑 `python tools/timing_audit.py runs`，先看同模型三局是否时间重叠；并行跑出的 B2 不作模型间比较 |
 
