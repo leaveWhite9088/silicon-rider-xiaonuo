@@ -235,5 +235,184 @@ class FeeAndSpeedMetricTests(unittest.TestCase):
                 self.assertEqual("疑似脚本代打" in fc, expect_suspect, f"factcard gap={gap_ms}")
 
 
+class ObjectiveCacheAndFinalizePipelineTests(unittest.TestCase):
+    def _make_run(self, root: Path, name: str, seed: int, profit: float):
+        import hashlib, json
+        run_dir = root / name
+        run_dir.mkdir(parents=True, exist_ok=True)
+        commit = hashlib.sha256(("sr:" + str(seed)).encode()).hexdigest()
+        (run_dir / "protocol.json").write_text(json.dumps({
+            "scene": {"seed_commit": commit},
+            "arrival": {"mode": "sim_time", "batches_spawned": 10},
+            "movement": {"speed_multiplier": 2},
+            "timing": {"t0_source": "external"},
+        }), encoding="utf-8")
+        (run_dir / "result.json").write_text(json.dumps({
+            "status": "completed", "termination": "scene_completed", "rounds": 5,
+            "endToEndSeconds": 480.0, "wallSeconds": 480.0,
+            "snapshot": {"minute": 840.0, "remainingMinutes": 0.0, "battery": 50.0, "orders": []},
+            "score": {
+                "totalProfit": profit, "onTimeRate": 1.0, "completedOrders": 10, "onTimeOrders": 10,
+                "pathEfficiency": 1.05, "totalDistance": 105.0, "optimalDistance": 100.0,
+                "totalPenalty": 0.0, "totalRevenue": profit, "averageOvertime": 0.0, "batterySwaps": 1,
+            },
+        }), encoding="utf-8")
+        trace_lines = [
+            {"type": "tool", "round": 1, "t": 1000, "call": {"name": "wait", "arguments": {"minutes": 5}},
+             "response": {"success": True}, "before": {"minute": 360.0, "battery": 100, "orders": []},
+             "after": {"minute": 365.0, "battery": 100, "orders": []}},
+            {"type": "tool", "round": 2, "t": 3000, "call": {"name": "wait", "arguments": {"minutes": 5}},
+             "response": {"success": True}, "before": {"minute": 365.0, "battery": 100, "orders": []},
+             "after": {"minute": 370.0, "battery": 100, "orders": []}},
+        ]
+        (run_dir / "trace.jsonl").write_text("\n".join(json.dumps(x) for x in trace_lines), encoding="utf-8")
+        return run_dir, commit
+
+    def test_fingerprints_tamper_detection_and_realtime_blind_rescore(self):
+        import json, os, subprocess
+        import objective_cache, finalize
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            runs_dir = base / "runs"
+            lb_dir = base / "leaderboard"
+            bm_dir = lb_dir / "blind-maps"
+            vd_dir = lb_dir / "verdicts"
+            pack_dir = lb_dir / "blind" / "pack01"
+            bm_dir.mkdir(parents=True)
+            pack_dir.mkdir(parents=True)
+
+            # 1) 创建模型 alpha（2 局）与 beta（2 局）
+            a1, c_a1 = self._make_run(runs_dir, "alpha-s1", 101, 480.0)
+            a2, c_a2 = self._make_run(runs_dir, "alpha-s2", 102, 360.0)
+            b1, _ = self._make_run(runs_dir, "beta-s1", 101, 420.0)
+            b2, _ = self._make_run(runs_dir, "beta-s2", 102, 420.0)
+
+            seeds_file = base / "seeds.json"
+            seeds_file.write_text(json.dumps({"seeds": [
+                {"index": 1, "seed": 101},
+                {"index": 2, "seed": 102},
+            ]}), encoding="utf-8")
+
+            # 2) 验证盲评打包直接生成盲评包与映射，且绝不生成客观分 评分.json
+            blind_root = lb_dir / "blind"
+            for m_name, r_list in (("alpha", [a1, a2]), ("beta", [b1, b2])):
+                pack_res = subprocess.run(
+                    [sys.executable, str(ROOT / "src" / "scoring" / "judge_pack.py"),
+                     "--model", m_name, "--runs", *[str(x) for x in r_list],
+                     "--blind-root", str(blind_root), "--blind-maps-dir", str(bm_dir)],
+                    capture_output=True, text=True, encoding="utf-8",
+                )
+                self.assertEqual(pack_res.returncode, 0, pack_res.stdout + pack_res.stderr)
+            self.assertTrue((a1 / "factcard.md").is_file())
+            self.assertFalse((a1 / "评分.json").exists(), "盲评打包阶段严禁生成客观得分文件")
+
+            alpha_map = json.loads(next(bm_dir.glob("alpha.*.blind-map.json")).read_text(encoding="utf-8"))
+            beta_map = json.loads(next(bm_dir.glob("beta.*.blind-map.json")).read_text(encoding="utf-8"))
+            pack_dir = blind_root / alpha_map["pack_id"]
+            pack_beta_dir = blind_root / beta_map["pack_id"]
+
+            rev_log = lb_dir / "reviews.jsonl"
+            scores_md = lb_dir / "scores.md"
+
+            def submit(pdir, cid, jid, d1, d2, d3):
+                r = subprocess.run([
+                    sys.executable, str(ROOT / "src" / "scoring" / "judge_submit.py"),
+                    "--pack-dir", str(pdir), "--case-id", cid,
+                    "--judge-id", jid, "--judge-model", "JudgeModel",
+                    "--D1", str(d1), "--D2", str(d2), "--D3", str(d3),
+                    "--evidence", "[E01] [F01]", "--note", "反证说明",
+                    "--review-log", str(rev_log),
+                ], capture_output=True, text=True, encoding="utf-8")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+            submit(pack_dir, "case-01", "j1", 6, 5, 5)       # D=16
+            submit(pack_dir, "case-02", "j1", 6, 5, 5)       # D=16
+            submit(pack_beta_dir, "case-01", "j1", 9, 8, 8)  # D=25
+            submit(pack_beta_dir, "case-02", "j1", 9, 8, 8)  # D=25
+
+            old_sr_seeds = os.environ.get("SR_SEEDS")
+            os.environ["SR_SEEDS"] = str(seeds_file)
+            try:
+                common_args = [
+                    "--review-log", str(rev_log),
+                    "--no-replay",
+                    "--leaderboard-out", str(scores_md),
+                    "--verdicts-dir", str(vd_dir),
+                    "--blind-maps-dir", str(bm_dir),
+                    "--runs-dir", str(runs_dir),
+                ]
+                # 3) 首次汇总：4 局全部计算客观分并写入双指纹
+                rc = finalize.main(common_args)
+                self.assertEqual(rc, 0)
+                va = json.loads((vd_dir / "alpha.json").read_text(encoding="utf-8"))
+                vb = json.loads((vd_dir / "beta.json").read_text(encoding="utf-8"))
+                self.assertEqual(va["summary"]["objective_recomputed"], 2)
+                self.assertEqual(va["summary"]["objective_cache_hits"], 0)
+                sc_a1 = json.loads((a1 / "评分.json").read_text(encoding="utf-8"))
+                self.assertIn("scoring_hash", sc_a1)
+                self.assertIn("deliverables_hash", sc_a1)
+                self.assertNotIn("D_judged", sc_a1)
+                # 初始时 beta 总分高于 alpha，排第 1
+                md_text = scores_md.read_text(encoding="utf-8")
+                self.assertIn("| 1 | beta |", md_text)
+                self.assertIn("| 2 | alpha |", md_text)
+
+                # 4) 评委 j1 随时重评修改 alpha 的盲评分数（无需等待客观探针重跑，实时翻转排名）
+                submit(pack_dir, "case-01", "j1", 11, 10, 9)  # D=30（覆盖此前 16）
+                submit(pack_dir, "case-02", "j1", 11, 10, 9)  # D=30
+                rc = finalize.main(common_args)
+                self.assertEqual(rc, 0)
+                va2 = json.loads((vd_dir / "alpha.json").read_text(encoding="utf-8"))
+                self.assertEqual(va2["summary"]["objective_cache_hits"], 2)
+                self.assertEqual(va2["summary"]["objective_recomputed"], 0)
+                self.assertEqual(va2["mean"]["D"], 30.0)
+                self.assertEqual(len(va2["runs"]), 2)  # 保留每局明细
+                md_text2 = scores_md.read_text(encoding="utf-8")
+                self.assertIn("| 1 | alpha |", md_text2)
+                self.assertIn("| 2 | beta |", md_text2)
+
+                # 5) 篡改 评分.json 内的客观分但保留原指纹 → 必须识别为 tampered 并自动重算还原
+                real_a = sc_a1["A_outcome"]
+                tampered = dict(sc_a1)
+                tampered["A_outcome"] = 30.0
+                (a1 / "评分.json").write_text(json.dumps(tampered), encoding="utf-8")
+                ok, reason = objective_cache.verify_objective_cache(
+                    tampered, seed=101, expected_commit=c_a1,
+                    scoring_hash=sc_a1["scoring_hash"], deliverables_hash=sc_a1["deliverables_hash"],
+                    require_replay=False,
+                )
+                self.assertFalse(ok)
+                self.assertEqual(reason, "tampered")
+
+                rc = finalize.main(common_args)
+                self.assertEqual(rc, 0)
+                va3 = json.loads((vd_dir / "alpha.json").read_text(encoding="utf-8"))
+                # a1 被重算还原，a2 继续命中缓存
+                self.assertEqual(va3["summary"]["objective_recomputed"], 1)
+                self.assertEqual(va3["summary"]["objective_cache_hits"], 1)
+                restored_sc = json.loads((a1 / "评分.json").read_text(encoding="utf-8"))
+                self.assertEqual(restored_sc["A_outcome"], real_a)
+
+                # 6) 交付物变动 1 字节 → deliverables_hash 失配，仅重算变动局
+                (a2 / "trace.jsonl").write_text((a2 / "trace.jsonl").read_text(encoding="utf-8") + "\n", encoding="utf-8")
+                rc = finalize.main(common_args)
+                self.assertEqual(rc, 0)
+                va4 = json.loads((vd_dir / "alpha.json").read_text(encoding="utf-8"))
+                self.assertEqual(va4["summary"]["objective_recomputed"], 1)
+                self.assertEqual(va4["summary"]["objective_cache_hits"], 1)
+
+                # 7) --recompute 强制全量重算开关
+                rc = finalize.main(common_args + ["--recompute"])
+                self.assertEqual(rc, 0)
+                va5 = json.loads((vd_dir / "alpha.json").read_text(encoding="utf-8"))
+                self.assertEqual(va5["summary"]["objective_recomputed"], 2)
+                self.assertEqual(va5["summary"]["objective_cache_hits"], 0)
+            finally:
+                if old_sr_seeds is None:
+                    os.environ.pop("SR_SEEDS", None)
+                else:
+                    os.environ["SR_SEEDS"] = old_sr_seeds
+
+
 if __name__ == "__main__":
     unittest.main()

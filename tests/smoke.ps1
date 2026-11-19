@@ -1,4 +1,4 @@
-# 端到端冒烟：跑一班（固定 4 行）→ 断言产物 → 评分（不写排行榜）→ 清理
+﻿# 端到端冒烟：跑一班（固定 4 行）→ 断言产物 → 评分（不写排行榜）→ 清理
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 python (Join-Path $root 'tests\scoring_units.py')
@@ -30,6 +30,9 @@ if (-not (Test-Path (Join-Path $out 'factcard.md'))) { throw '冒烟失败：缺
 $score = Get-Content (Join-Path $out '评分.json') -Raw | ConvertFrom-Json
 if ($null -eq $score.A_outcome) { throw '冒烟失败：评分缺 A_outcome' }
 if ($score.seed_verified -ne $true) { throw '冒烟失败：种子承诺未通过核对' }
+if ($score.replay_ok -ne $true -or $score.finalized -ne $true) { throw '冒烟失败：客观分未完成回放定稿' }
+if (-not $score.scoring_hash -or -not $score.deliverables_hash -or -not $score.attestation) { throw '冒烟失败：缺少客观分防篡改校验指纹' }
+if ($null -ne $score.PSObject.Properties['D_judged']) { throw '冒烟失败：客观分不得包含盲评字段' }
 if ($score.t0_source -notin @("external", "process")) { throw "冒烟失败：未知 t0 来源 $($score.t0_source)" }
 if ($score.b2_reliable -ne $true) { throw '冒烟失败：B2 应被标为可信' }
 

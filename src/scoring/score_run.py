@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
-"""对一次运行目录计算 A/B/C（脚本层），生成决策事实卡，并追加到排行榜。
+"""官方客观评分脚本：对单局冻结交付物计算客观分（A/B/C）、核验种子与回放并写入防篡改校验指纹。
+
+说明：
+- 选手阶段严禁运行本脚本或生成/篡改 评分.json；官方客观评分由汇总出榜侧统一核验定稿。
+- 客观分与盲评分物理分离存储：评分.json 仅保存客观分与两项校验指纹（scoring_hash / deliverables_hash），
+  绝不包含盲评 D 分，也不直接修改 leaderboard/scores.md（总榜仅由 finalize.py 合成生成）。
 
 用法：
-    python src/scoring/score_run.py runs/<名> <模型名> [--seed 12345] [--anchor 350] [--no-record]
-
---seed      可选：用明文种子核对 protocol.json 里的 sha256 承诺；不匹配会显式报警（防事后换种子）
---anchor    可选：覆盖 A 的分母（缺省读 configs/benchmark.json → scoring.anchor_yuan）
---no-record 只写 factcard/评分.json，不追加排行榜（CI/冒烟用）
+    python src/scoring/score_run.py runs/<名> <模型名> [--seed 12345 | --seed-index 1] [--anchor 600] [--no-replay] [--recompute]
 """
 from pathlib import Path
-import sys, json, hashlib, argparse, datetime
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
 
 try:                                    # Windows 控制台默认 GBK，避免打印中文/符号时崩
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -18,80 +24,180 @@ except Exception:
 
 HERE = Path(__file__).resolve().parent          # src/scoring
 ROOT = HERE.parent.parent                       # 仓库根
-sys.path.insert(0, str(HERE))
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
 import metrics
+import objective_cache
 
-ap = argparse.ArgumentParser()
-ap.add_argument("folder")
-ap.add_argument("model")
-ap.add_argument("--seed", type=int, default=None)
-ap.add_argument("--seed-index", type=int, default=None, help="预注册序号（推荐：明文由脚本读取，人不接触）")
-ap.add_argument("--anchor", type=float, default=None)
-ap.add_argument("--no-record", action="store_true")
-a = ap.parse_args()
 
-folder = Path(a.folder).resolve()
-if not folder.exists():
-    print("运行目录不存在:", folder)
-    sys.exit(1)
-if a.anchor is not None:
-    metrics.PROFIT_ANCHOR = float(a.anchor)
-
-proto = json.loads((folder / "protocol.json").read_text(encoding="utf-8"))
-commit = (proto.get("scene") or {}).get("seed_commit")
-seed = a.seed
-if seed is None and a.seed_index is not None:
-    import os
-    seeds_file = Path(os.environ.get("SR_SEEDS") or (ROOT.parent / ".sr-seeds" / "seeds.json"))
+def resolve_seed_from_index(seed_index: int, root: Path = ROOT) -> int:
+    seeds_file = Path(os.environ.get("SR_SEEDS") or (root.parent / ".sr-seeds" / "seeds.json"))
     if not seeds_file.exists():
-        print(f"找不到种子明文：{seeds_file}（由评测环境放置，或用环境变量 SR_SEEDS 指定）")
-        sys.exit(1)
+        raise RuntimeError(f"找不到种子明文：{seeds_file}（由评测环境放置，或用环境变量 SR_SEEDS 指定）")
     table = {s["index"]: s["seed"] for s in json.loads(seeds_file.read_text(encoding="utf-8"))["seeds"]}
-    if a.seed_index not in table:
-        print(f"种子表里没有序号 {a.seed_index}")
-        sys.exit(1)
-    seed = table[a.seed_index]
-seed_ok = None
-if seed is not None:
-    calc = hashlib.sha256(("sr:" + str(seed)).encode()).hexdigest()
-    seed_ok = (calc == commit)
-    if not seed_ok:
-        print(f"!! 种子承诺不匹配：给定种子的哈希 {calc[:12]}… ≠ 记录 {str(commit)[:12]}…（该次成绩应作废）")
+    if seed_index not in table:
+        raise RuntimeError(f"种子表里没有序号 {seed_index}")
+    return int(table[seed_index])
 
-m = metrics.analyze_work(folder)
-s = metrics.score_work(m)
-(folder / "factcard.md").write_text(metrics.factcard(m), encoding="utf-8")
-out = dict(s)
-out["seed_commit"] = commit
-out["seed_verified"] = seed_ok
-out["anchor"] = metrics.PROFIT_ANCHOR
-out["t0_source"] = m.get("t0Source")
-out["b2_reliable"] = bool(m.get("endToEndSeconds") is not None or m.get("wallSeconds"))
-(folder / "评分.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
-e2e = (m.get("endToEndSeconds") or 0) / 60
-drv = (m.get("wallSeconds") or 0) / 60
-rec = (
-    f"\n## {a.model} — {datetime.datetime.now():%Y-%m-%d %H:%M}\n"
-    f"- 运行目录：`{folder}`\n"
-    f"- 净利：{m['profit']:.2f} / {metrics.PROFIT_ANCHOR:.0f} 元锚　完成 {m.get('completed')} 单"
-    f"（准时率 {None if m.get('onTimeRate') is None else round(m['onTimeRate'],3)}），终止 {m.get('termination')}\n"
-    f"- 计时：端到端 **{e2e:.1f} 分钟**（B2 口径）/ 驱动 {drv:.1f} 分钟；新单生成 {m.get('arrivalMode')}（{m.get('arrivalBatches')} 批）\n"
-    f"- 种子承诺：`{str(commit)[:16]}…`" + ("" if seed_ok is None else ("　[已验证]" if seed_ok else "　[不匹配，成绩作废]")) + "\n"
-    f"- **A 任务成果 = {s['A_outcome']:.2f} / 30**\n"
-    f"- **B 执行效率 = {s['B_efficiency']:.2f} / 15**（无效调用率 {None if m.get('invalid_ratio') is None else round(m['invalid_ratio']*100,2)}% → B1={s['B_detail']['B1_invalid5']}；耗时 B2={s['B_detail']['B2_time10']}）\n"
-    f"- **C 操作质量 = {s['C_quality']:.2f} / 25**（C1={s['C_levels']['C1']} 级、C2={s['C_levels']['C2']} 级、C3={s['C_levels']['C3']} 级）\n"
-    f"- D 决策智能 = 待评审（事实卡：`{folder / 'factcard.md'}`）\n"
-    f"- 脚本层小计 = **{s['total_v2_partial']:.2f} / 70**"
-    + ("　⚠️ A 打穿锚值，触发人工复核" if s.get("A_out_of_range") else "")
-    + "\n"
-)
-if not a.no_record:
-    record = ROOT / "leaderboard" / "scores.md"
-    record.parent.mkdir(parents=True, exist_ok=True)
-    with record.open("a", encoding="utf-8") as f:
-        f.write(rec)
-    print(rec)
-print(f"评分完成：A={s['A_outcome']} B={s['B_efficiency']} C={s['C_quality']} 小计={s['total_v2_partial']}"
-      + ("" if a.no_record else "（已追加到 leaderboard/scores.md）"))
-print(f"调用节奏中位间隔 {m.get('medianCallGapMs')} ms"
-      + ("（疑似脚本代打）" if m.get("suspectScript") else "") + f"；越线={m.get('overrun')}")
+
+def score_and_finalize_run(
+    folder: Path,
+    *,
+    seed: int | None = None,
+    anchor_override: float | None = None,
+    no_replay: bool = False,
+    recompute: bool = False,
+    scoring_hash: str | None = None,
+) -> tuple[dict, dict, bool]:
+    """对单局运行目录执行客观评分与定稿（或复用防篡改缓存）。
+
+    返回 (score_record, metrics_summary, from_cache)。
+    验证失败时抛出 RuntimeError。
+    """
+    folder = Path(folder).resolve()
+    if not folder.exists():
+        raise RuntimeError(f"运行目录不存在: {folder}")
+
+    missing = objective_cache.check_missing_deliverables(folder)
+    if missing:
+        raise RuntimeError(f"{folder.name}: 缺少冻结交付物 {', '.join(missing)}")
+
+    proto = json.loads((folder / "protocol.json").read_text(encoding="utf-8"))
+    res = json.loads((folder / "result.json").read_text(encoding="utf-8"))
+    commit = (proto.get("scene") or {}).get("seed_commit")
+
+    seed_ok = None
+    if seed is not None:
+        calc = hashlib.sha256(("sr:" + str(seed)).encode()).hexdigest()
+        seed_ok = (calc == commit)
+        if not seed_ok:
+            raise RuntimeError(
+                f"{folder.name}: 种子承诺不匹配（给定种子哈希 {calc[:12]}… ≠ 记录 {str(commit)[:12]}…，成绩作废）"
+            )
+
+    eff_scoring_hash = scoring_hash or objective_cache.compute_scoring_hash(ROOT, anchor_override=anchor_override)
+    deliv_hash = objective_cache.compute_deliverables_hash(folder)
+
+    score_path = folder / "评分.json"
+    card_path = folder / "factcard.md"
+    if not recompute and seed is not None and score_path.is_file() and card_path.is_file():
+        try:
+            cached = json.loads(score_path.read_text(encoding="utf-8"))
+        except Exception:
+            cached = None
+        ok, _reason = objective_cache.verify_objective_cache(
+            cached,
+            seed=seed,
+            expected_commit=commit,
+            scoring_hash=eff_scoring_hash,
+            deliverables_hash=deliv_hash,
+            require_replay=(not no_replay),
+        )
+        if ok:
+            return cached, cached.get("run_summary") or {}, True
+
+    replay_ok = None
+    if seed is not None and not no_replay:
+        rr = subprocess.run(
+            ["node", str(ROOT / "tools" / "verify_replay.mjs"), str(folder), "--seed", str(seed), "--quiet"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        replay_ok = (rr.returncode == 0)
+        if not replay_ok:
+            detail = (((rr.stdout or "") + "\n" + (rr.stderr or "")).strip())[-300:]
+            raise RuntimeError(f"{folder.name}: 原引擎回放与结算不一致（成绩作废） {detail}".strip())
+
+    prev_anchor = metrics.PROFIT_ANCHOR
+    try:
+        if anchor_override is not None:
+            metrics.PROFIT_ANCHOR = float(anchor_override)
+        m = metrics.analyze_work(folder)
+        s = metrics.score_work(m)
+        card_path.write_text(metrics.factcard(m), encoding="utf-8")
+        eff_anchor = metrics.PROFIT_ANCHOR
+    finally:
+        metrics.PROFIT_ANCHOR = prev_anchor
+
+    run_summary = {
+        "rounds": res.get("rounds"),
+        "profit": round(float((res.get("score") or {}).get("totalProfit") or 0.0), 2),
+        "completed": (res.get("score") or {}).get("completedOrders"),
+        "endToEndMin": round(float(res.get("endToEndSeconds") or 0.0) / 60.0, 1),
+        "wallMin": round(float(m.get("wallSeconds") or 0.0) / 60.0, 1),
+        "onTimeRate": None if m.get("onTimeRate") is None else round(float(m["onTimeRate"]), 3),
+        "termination": m.get("termination"),
+        "arrivalMode": m.get("arrivalMode"),
+        "arrivalBatches": m.get("arrivalBatches"),
+        "invalidRatioPct": None if m.get("invalid_ratio") is None else round(float(m["invalid_ratio"]) * 100.0, 2),
+        "medianCallGapMs": m.get("medianCallGapMs"),
+        "suspectScript": bool(m.get("suspectScript")),
+        "overrun": m.get("overrun"),
+    }
+
+    out = objective_cache.build_objective_record(
+        s,
+        run_summary=run_summary,
+        seed_commit=commit,
+        seed=seed,
+        seed_verified=seed_ok,
+        replay_ok=replay_ok,
+        anchor=eff_anchor,
+        t0_source=m.get("t0Source"),
+        b2_reliable=bool(m.get("endToEndSeconds") is not None or m.get("wallSeconds")),
+        scoring_hash=eff_scoring_hash,
+        deliverables_hash=deliv_hash,
+    )
+    score_path.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    return out, run_summary, False
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("folder")
+    ap.add_argument("model")
+    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--seed-index", type=int, default=None, help="预注册序号（推荐：明文由脚本读取，人不接触）")
+    ap.add_argument("--anchor", type=float, default=None)
+    ap.add_argument("--no-replay", action="store_true", help="跳过回放核验（仅开发自检，不标记正式定稿）")
+    ap.add_argument("--recompute", "--force-recompute", dest="recompute", action="store_true",
+                    help="忽略已有客观分缓存，强制重新计算客观分与回放核验")
+    ap.add_argument("--no-record", action="store_true", help="兼容保留参数：score_run.py 现统一只写客观分，不再改写总榜")
+    a = ap.parse_args()
+
+    seed = a.seed
+    if seed is None and a.seed_index is not None:
+        try:
+            seed = resolve_seed_from_index(a.seed_index, ROOT)
+        except RuntimeError as e:
+            print(str(e))
+            sys.exit(1)
+
+    try:
+        out, rs, from_cache = score_and_finalize_run(
+            Path(a.folder),
+            seed=seed,
+            anchor_override=a.anchor,
+            no_replay=a.no_replay,
+            recompute=a.recompute,
+        )
+    except RuntimeError as e:
+        print(f"!! {e}")
+        sys.exit(1)
+
+    cache_tag = "复用已定稿缓存" if from_cache else ("已定稿" if out.get("finalized") else "未定稿草稿")
+    print(
+        f"客观评分完成（{cache_tag}）：A={out['A_outcome']} B={out['B_efficiency']} "
+        f"C={out['C_quality']} 小计={out['total_v2_partial']}"
+    )
+    print(
+        f"校验指纹：scoring={out['scoring_hash'][:12]}… deliverables={out['deliverables_hash'][:12]}…"
+    )
+    print(
+        f"调用节奏中位间隔 {rs.get('medianCallGapMs')} ms"
+        + ("（疑似脚本代打）" if rs.get("suspectScript") else "")
+        + f"；越线={rs.get('overrun')}"
+    )
+
+
+if __name__ == "__main__":
+    main()

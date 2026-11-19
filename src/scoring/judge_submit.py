@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""评委提交单条评分：只追加到中心评审日志，不显示其他评委分数。"""
+"""评委提交单条评分：只追加到中心评审日志，不显示其他评委分数；支持同一评委随时重评。"""
 from pathlib import Path
 import sys, json, argparse
 
@@ -10,13 +10,14 @@ except Exception:
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-sys.path.insert(0, str(HERE))
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
 import review_log
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--pack-dir", required=True, help="评委拿到的 leaderboard/blind/<pack_id>/ 目录")
 ap.add_argument("--case-id", required=True)
-ap.add_argument("--judge-id", required=True, help="评委唯一 ID（同一位评委的多次提交用同一 ID）")
+ap.add_argument("--judge-id", required=True, help="评委唯一 ID（同一位评委提交或重评请保持同一 ID）")
 ap.add_argument("--judge-model", required=True, help="评委模型/姓名，例如 gpt-5、human-A")
 ap.add_argument("--D1", type=float, required=True)
 ap.add_argument("--D2", type=float, required=True)
@@ -24,6 +25,7 @@ ap.add_argument("--D3", type=float, required=True)
 ap.add_argument("--evidence", required=True, help="至少引用 2 条事实卡证据，例如 [E01] [F02]")
 ap.add_argument("--note", default="", help="最强反证/备注")
 ap.add_argument("--review-log", default=str(review_log.DEFAULT_LOG))
+ap.add_argument("--reject-duplicate", action="store_true", help="若该评委已评过同一 case 则拒绝提交（默认允许重评覆盖）")
 a = ap.parse_args()
 
 pack_dir = Path(a.pack_dir).resolve()
@@ -60,7 +62,9 @@ rec = {
     "note": a.note.strip(),
 }
 try:
-    saved = review_log.append_review(a.review_log, rec, reject_duplicate=True)
+    saved, prior_count = review_log.append_review(
+        a.review_log, rec, reject_duplicate=a.reject_duplicate, return_prior_count=True
+    )
 except review_log.DuplicateReviewError as e:
     print("提交失败：" + str(e))
     sys.exit(2)
@@ -68,6 +72,9 @@ except review_log.ReviewLogError as e:
     print("提交失败：" + str(e))
     sys.exit(1)
 
-print("评分提交成功。")
+if prior_count > 0:
+    print(f"评分重评提交成功（已追加新记录，覆盖同一评委此前 {prior_count} 条旧记录；汇总时实时取最新一条生效）。")
+else:
+    print("评分提交成功。")
 print(f"review_id={saved['review_id']}  pack_id={saved['pack_id']}  case_id={saved['case_id']}")
 print("本次提交没有读取或显示其他评委的评分。")

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""中心化、追加式评审日志的读写与聚合工具。"""
+"""中心化、追加式评审日志的读写与聚合工具。
+
+支持评委随时重评：所有打分记录仅以追加方式写入 JSONL，
+聚合与出榜时按 (pack_id, case_id, judge_id) 自动保留最新一条实时生效。
+"""
 from pathlib import Path
 import os, sys, json, time, uuid, statistics, datetime
 from contextlib import contextmanager
@@ -63,6 +67,7 @@ def _file_lock(log_path: Path, timeout=15.0):
         except FileNotFoundError:
             pass
 
+
 def read_reviews(log_path=None):
     path = Path(log_path or DEFAULT_LOG)
     if not path.exists():
@@ -83,15 +88,41 @@ def read_reviews(log_path=None):
     return out
 
 
+def _parse_ts(ts_str: str):
+    if not ts_str:
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc).timestamp()
+        return dt.timestamp()
+    except Exception:
+        return None
+
+
+def _is_newer_or_same(curr: dict, curr_idx: int, prev: dict, prev_idx: int) -> bool:
+    t_curr = _parse_ts(str(curr.get("created_at", "")))
+    t_prev = _parse_ts(str(prev.get("created_at", "")))
+    if t_curr is not None and t_prev is not None:
+        if t_curr != t_prev:
+            return t_curr > t_prev
+        return curr_idx >= prev_idx
+    s_curr = str(curr.get("created_at", ""))
+    s_prev = str(prev.get("created_at", ""))
+    if s_curr != s_prev:
+        return s_curr > s_prev
+    return curr_idx >= prev_idx
+
+
 def dedupe_latest(reviews):
-    """同一 (pack_id, case_id, judge_id) 只保留时间最新的一条。"""
+    """同一 (pack_id, case_id, judge_id) 只保留最新一条（时间戳优先，同秒按文件追加顺序取最后一条）。"""
     by_key = {}
-    for rec in reviews:
+    for idx, rec in enumerate(reviews):
         key = (rec["pack_id"], rec["case_id"], rec["judge_id"])
-        prev = by_key.get(key)
-        if prev is None or str(rec.get("created_at", "")) >= str(prev.get("created_at", "")):
-            by_key[key] = rec
-    return list(by_key.values()), len(reviews) - len(by_key)
+        prev_pair = by_key.get(key)
+        if prev_pair is None or _is_newer_or_same(rec, idx, prev_pair[0], prev_pair[1]):
+            by_key[key] = (rec, idx)
+    return [pair[0] for pair in by_key.values()], len(reviews) - len(by_key)
 
 
 def aggregate_reviews(reviews, mode="mean"):
@@ -120,8 +151,9 @@ def aggregate_reviews(reviews, mode="mean"):
         })
     return out
 
-def append_review(log_path, record, reject_duplicate=True):
-    """追加一条评审记录。返回最终写入的记录。"""
+
+def append_review(log_path, record, reject_duplicate=True, return_prior_count=False):
+    """追加一条评审记录。默认返回最终写入的记录；return_prior_count=True 时返回 (rec, prior_count)。"""
     path = Path(log_path or DEFAULT_LOG)
     rec = dict(record)
     rec.setdefault("schema_version", SCHEMA_VERSION)
@@ -134,14 +166,16 @@ def append_review(log_path, record, reject_duplicate=True):
     validate_review(rec)
     with _file_lock(path):
         existing = read_reviews(path)
-        if reject_duplicate:
-            key = (rec["pack_id"], rec["case_id"], rec["judge_id"])
-            if any((x["pack_id"], x["case_id"], x["judge_id"]) == key for x in existing):
-                raise DuplicateReviewError(
-                    f"该评委已提交过 pack={rec['pack_id']} case={rec['case_id']}；"
-                    "如需更正请联系汇总者，不要重复提交。")
+        key = (rec["pack_id"], rec["case_id"], rec["judge_id"])
+        prior_count = sum(1 for x in existing if (x["pack_id"], x["case_id"], x["judge_id"]) == key)
+        if reject_duplicate and prior_count > 0:
+            raise DuplicateReviewError(
+                f"该评委已提交过 pack={rec['pack_id']} case={rec['case_id']}；"
+                "如需重评请去掉 --reject-duplicate。")
         with path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(rec, ensure_ascii=False, separators=(",", ":")) + "\n")
             f.flush()
             os.fsync(f.fileno())
+    if return_prior_count:
+        return rec, prior_count
     return rec

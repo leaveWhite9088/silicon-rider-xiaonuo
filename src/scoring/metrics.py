@@ -424,7 +424,6 @@ def score_work(m):
     s["C3_path8"] = round(c3_level(m) * C3_MAX / 10, 2)
     s["C_quality"] = round(s["C1_constraint9"] + s["C2_state8"] + s["C3_path8"], 2)
     s["C_levels"] = {"C1": round(c1_level(m), 2), "C2": round(c2_level(m), 2), "C3": round(c3_level(m), 2)}  # 等效级 0–10
-    s["D_judged"] = None  # 裁判层待填
     s["total_v2_partial"] = (None if s["A_outcome"] is None or s["B_efficiency"] is None
                              else round(s["A_outcome"] + s["B_efficiency"] + s["C_quality"], 2))
     return s

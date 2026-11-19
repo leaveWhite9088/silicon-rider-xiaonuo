@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""一键出榜入口：对 leaderboard/blind-maps/ 里发现的所有模型逐个运行 src/scoring/finalize.py。
+"""一键出榜入口：对 leaderboard/blind-maps/ 里发现的所有模型汇总客观分缓存与实时盲评日志，合成大榜。
 
 用法：
-    python leaderboard/finalize.py                 # 全部模型一次性出榜
+    python leaderboard/finalize.py                 # 全部模型一次性出榜（客观分未变时自动复用防篡改缓存，盲评实时生效）
+    python leaderboard/finalize.py --recompute     # 强制忽略客观分缓存，全量重算客观分与引擎回放核验
     python leaderboard/finalize.py --dry-run       # 只打印不写榜
-    python leaderboard/finalize.py --model Demo    # 只出某一个模型
+    python leaderboard/finalize.py --model Demo    # 只更新某一个模型并刷新总榜排名
     其他参数（--allow-partial / --d-aggregate median 等）原样转发。
 
 结果写入 leaderboard/scores.md 与 leaderboard/verdicts/<模型>.json。

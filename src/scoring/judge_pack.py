@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 生成匿名盲评包。评委只拿到 leaderboard/blind/<pack_id>/ 这一个目录路径；
-包内不出现模型名、A/B/C、运行目录或种子明文。
-评委通过 judge_submit.py 把评分追加到中心日志 leaderboard/reviews.jsonl。
+包内不出现模型名、A/B/C、运行目录或种子明文，且本脚本只从冻结交付物提取脱敏事实卡，
+绝不计算或写入任何官方客观得分（评分.json）。
+评委通过 judge_submit.py 把评分追加到中心日志 leaderboard/reviews.jsonl（支持随时重评）。
 模型到 case_id 的私有映射写到 leaderboard/blind-maps/<model_id>.<pack_id>.blind-map.json。
 """
 from pathlib import Path
 import sys, json, re, argparse, secrets, datetime
-from model_identity import canonical_model_id, matches_batch_run
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -16,6 +16,12 @@ except Exception:
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import metrics
+import objective_cache
+from model_identity import canonical_model_id, matches_batch_run
+
 BLIND_MAPS = ROOT / "leaderboard" / "blind-maps"
 BLIND_ROOT = ROOT / "leaderboard" / "blind"
 
@@ -24,7 +30,13 @@ ap.add_argument("--model", required=True)
 ap.add_argument("--model-id", default=None, help="汇总分组用的规范模型名；默认从 --model 去掉批次后缀")
 ap.add_argument("--runs", nargs="*", default=None)
 ap.add_argument("--print", dest="do_print", action="store_true", help="兼容旧参数：只打印盲评包内路径，不打印事实卡内容")
+ap.add_argument("--blind-root", default=None, help=argparse.SUPPRESS)
+ap.add_argument("--blind-maps-dir", default=None, help=argparse.SUPPRESS)
 a = ap.parse_args()
+if a.blind_root:
+    BLIND_ROOT = Path(a.blind_root).resolve()
+if a.blind_maps_dir:
+    BLIND_MAPS = Path(a.blind_maps_dir).resolve()
 
 raw_model = a.model.strip()
 model_id = (a.model_id.strip().lower() if a.model_id else canonical_model_id(raw_model)).strip()
@@ -50,13 +62,20 @@ else:
             p for p in runs_root.iterdir()
             if p.is_dir() and canonical_model_id(p.name) == model_id
         )
-# 缺 factcard.md 的 run 先统一补算（不带种子，仅生成事实卡与评分；种子承诺在 finalize 时核验）
-import subprocess
+
+# 直接从冻结交付物生成事实卡（不调用 score_run.py，绝不生成客观分 评分.json）
+valid_runs = []
 for r in runs:
-    if not (r / "factcard.md").exists() and (r / "protocol.json").exists() and (r / "result.json").exists():
-        subprocess.run([sys.executable, str(ROOT / "src" / "scoring" / "score_run.py"), str(r), model_id, "--no-record"],
-                       capture_output=True, text=True, encoding="utf-8", errors="replace")
-runs = [r for r in runs if (r / "factcard.md").exists()]
+    missing = objective_cache.check_missing_deliverables(r)
+    if missing:
+        continue
+    card_path = r / "factcard.md"
+    if not card_path.exists():
+        m = metrics.analyze_work(r)
+        card_path.write_text(metrics.factcard(m), encoding="utf-8")
+    valid_runs.append(r)
+runs = valid_runs
+
 # 显式给 --model-id 且显式给 --runs 时，由调用者负责模型归属，允许任意批次后缀。
 bad_runs = [] if (a.model_id and a.runs) else [r.name for r in runs if canonical_model_id(r.name) != model_id]
 if bad_runs:
@@ -65,7 +84,7 @@ if bad_runs:
         print("  - " + name)
     sys.exit(1)
 if not runs:
-    print(f"没有找到模型 {model_id} 的带 factcard.md 的运行目录（先跑 score_run.py，或用 --runs 指定）")
+    print(f"没有找到模型 {model_id} 具备完整交付物（protocol/result/trace）的运行目录（可用 --runs 指定）")
     sys.exit(1)
 
 BLIND_ROOT.mkdir(parents=True, exist_ok=True)
@@ -82,7 +101,7 @@ README = """
 - 访问仓库、runs/、leaderboard/ 其他目录；
 - 猜测模型名或查看 A/B/C。
 
-每位评委独立提交；提交人数不固定。
+每位评委独立提交；提交人数不固定，支持随时重评（以最新提交为准）。
 """
 (pack_dir / "README.md").write_text(README, encoding="utf-8")
 RUBRIC = """# D 层评分锚点
@@ -143,7 +162,7 @@ python src/scoring/judge_submit.py \\
   --evidence "[E01] [F02]" \\
   --note "<最强反证/备注>"
 
-把 case-01 换成要提交的 case。重复提交会被拒绝。
+把 case-01 换成要提交的 case。如需重评或修改打分，使用相同 --judge-id 重新运行即可（追加留档，汇总实时取最新一条）。
 """
 (pack_dir / "SUBMIT.md").write_text(SUBMIT, encoding="utf-8")
 
@@ -167,4 +186,4 @@ print(f"私有映射（裁判不可见，finalize.py 使用）：{map_path}")
 if a.do_print:
     for c in cases:
         print(pack_dir / c["factcard"])
-print("\n评委通过 judge_submit.py 追加到中心日志；汇总时用 finalize.py --review-log 汇总。")
+print("\n评委通过 judge_submit.py 追加到中心日志；汇总时用 finalize.py 实时读取最新盲评合并出榜。")
