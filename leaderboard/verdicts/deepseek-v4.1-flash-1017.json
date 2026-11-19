@@ -4,7 +4,8 @@
   "DeepSeek-V4.1-Flash-1017",
   "deepseek-v4.1-flash-1017"
  ],
- "finalized_at": "2026-11-14T13:52:28",
+ "finalized_at": "2026-11-19T10:17:55",
+ "scoring_hash": "3e83b8e56855700ea7b7c9800c44776881578f9c29b3f92164831fa475050599",
  "blind_pack_id": "cbdedc4c28c1",
  "blind_pack_ids": [
   "cbdedc4c28c1"
@@ -16,7 +17,9 @@
   "runs_total": 3,
   "runs_scored": 3,
   "judge_reviews": 6,
-  "rounds_total": 523
+  "rounds_total": 523,
+  "objective_cache_hits": 3,
+  "objective_recomputed": 0
  },
  "runs": [
   {
@@ -28,6 +31,9 @@
    "seed_commit": "3c5a5e38c2d4",
    "seed_verified": true,
    "replay_ok": true,
+   "objective_cached": true,
+   "scoring_hash": "3e83b8e56855700ea7b7c9800c44776881578f9c29b3f92164831fa475050599",
+   "deliverables_hash": "f4773f654b775c8df15ce1dcbc7bb051e7d449e175b1a4ac29b12cffbf4da81e",
    "profit": 480.72,
    "completed": 24,
    "endToEndMin": 25.0,
@@ -54,6 +60,9 @@
    "seed_commit": "c7d7f19209c2",
    "seed_verified": true,
    "replay_ok": true,
+   "objective_cached": true,
+   "scoring_hash": "3e83b8e56855700ea7b7c9800c44776881578f9c29b3f92164831fa475050599",
+   "deliverables_hash": "3e9c55da78da31559a2b43e2398ec51a690264f4e0f9eec85452880c3e8ba285",
    "profit": 494.2,
    "completed": 25,
    "endToEndMin": 15.7,
@@ -80,6 +89,9 @@
    "seed_commit": "805e1ba60ff0",
    "seed_verified": true,
    "replay_ok": true,
+   "objective_cached": true,
+   "scoring_hash": "3e83b8e56855700ea7b7c9800c44776881578f9c29b3f92164831fa475050599",
+   "deliverables_hash": "91c8aaa2a5dca942e3e5ade9122dc848ed44b4e34ed076ece52c7ed29ade53d0",
    "profit": 348.08,
    "completed": 16,
    "endToEndMin": 12.4,
