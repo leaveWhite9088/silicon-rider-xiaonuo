@@ -85,21 +85,18 @@
 ## 7. 运行
 
 ```sh
-# 种子已预注册：--seed-index 取序号即可，执行者不需要接触明文
-node tools/harness.mjs --model Demo-s1 --seed-index 1 --policy examples/policy-greedy.mjs
+# 1) 生成匿名盲评包（直接从冻结交付物提取脱敏事实卡，不生成官方客观分）
+python src/scoring/judge_pack.py --model Demo
 
-# 评分（核对承诺）
-python src/scoring/score_run.py runs/Demo-s1 Demo --seed-index 1
-
-# 评委提交：每位评委每个 case 追加一条评分到中心日志
+# 2) 评委提交或随时重评：每位评委每个 case 追加一条评分到独立中心日志
 python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case-id case-01 \
        --judge-id <评委ID> --judge-model <评委模型> \
-       --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]"
+       --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]" --note "最强反证"
 
-# 手动汇总出榜：从 leaderboard/blind-maps/ 自动发现私有映射和 run，合并多个三轮
-python src/scoring/finalize.py --model Demo \
-       --review-log leaderboard/reviews.jsonl \
-       --d-aggregate mean --min-judges 1
+# 3) 一键汇总出榜：核验/复用防篡改客观分缓存 + 实时读取最新盲评日志，按多局算术平均排名
+python leaderboard/finalize.py
+# 需要强制忽略缓存、全量重算客观分与引擎回放核验时：
+python leaderboard/finalize.py --recompute
 
 # 换批才需要重标锚值（本批固定种子，不换）
 node tools/bounds.mjs --seed-index 1

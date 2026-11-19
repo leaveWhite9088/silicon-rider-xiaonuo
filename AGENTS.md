@@ -6,30 +6,30 @@
 
 ## 0. 先分清：你在「选手域」还是「评委/汇总」
 
-这不是两个人，而是**两个信任域**。同一个 agent 可以既当选手又当开发者；本单次模式允许执行者运行**官方评分/打包脚本**，但**最终出榜和评委角色仍不能自己兼任**。
+这不是两个人，而是**两个信任域**。同一个 agent 可以既当选手又当开发者；**客观分与盲评分物理分离存储、独立校验**，**选手阶段严禁生成或篡改最终官方得分**，最终出榜与评委角色不能由选手兼任。
 
-> **当前采用：单次执行者收尾模式。**
-> 执行者（被测模型）跑完 3 个种子后，可以自行运行 `score_run.py --no-record` 生成 `评分.json` / `factcard.md`，并运行 `judge_pack.py` 生成匿名盲评包。本模式按单次会话使用，不要求跨批次复用或防作弊审计。
-> 执行者仍然不能运行 `finalize.py`、不能写 `leaderboard/scores.md`、不能修改评分/打包脚本；评委只能拿到 `leaderboard/blind/<pack_id>/` 路径，`blind-map.json` 和 `reviews.jsonl` 不交给评委。
+> **当前采用：客观/盲评分离与汇总统一核验模式。**
+> 执行者（被测模型）跑完 3 个种子后，可以运行 `judge_pack.py` 直接从冻结交付物提取脱敏事实卡生成匿名盲评包（该步骤**不计算、不生成**任何官方得分）。
+> **选手阶段严禁运行 `score_run.py`、`finalize.py`，严禁生成或修改 `评分.json`、`leaderboard/verdicts/` 或 `leaderboard/scores.md`，严禁修改评分/打包脚本**；评委只能拿到 `leaderboard/blind/<pack_id>/` 路径，`blind-map.json` 和 `reviews.jsonl` 不交给评委。官方客观分统一由汇总出榜侧核验定稿并记录防篡改指纹。
 
 | 信任域 | 典型承担者 | 可以做什么 | 绝对不能做什么 |
 | --- | --- | --- | --- |
-| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、逐轮手动调用工具、读观察、规划路线；跑完 3 局后运行官方 `score_run.py --no-record` 和 `judge_pack.py` | 决定种子、查阅评分细则或底层代码、编写或运行代打脚本、运行 `finalize.py`、写排行榜/最终裁决、修改评分/打包脚本 |
-| **评委/汇总** | 独立评委 / 运行汇总脚本的人 | 看匿名包、提交 D、评委完成后手动汇总入榜 | 替选手操作工具 |
+| **选手域** | 被测模型（可能就是正在读这份文件的你） | 起局、逐轮手动调用工具、读观察、规划路线；跑完 3 局后运行 `judge_pack.py` 生成纯脱敏盲评包 | 决定种子、查阅评分细则或底层代码、编写或运行代打脚本、运行 `score_run.py` / `finalize.py`、生成或篡改 `评分.json` / 排行榜 / 最终裁决、修改评分/打包脚本 |
+| **评委/汇总** | 独立评委 / 运行汇总脚本的人 | 看匿名包、提交或随时重评 D、评委完成后运行汇总脚本统一核验客观分并合成总榜 | 替选手操作工具 |
 
 ### 三种部署形态，你是哪一种？
 
-| 形态 | 谁起局/喂工具 | 谁打 t0 | 谁跑官方评分 | 你该读 |
+| 形态 | 谁起局/喂工具 | 谁打 t0 | 谁核验客观分与出榜 | 你该读 |
 | --- | --- | --- | --- | --- |
-| **A. 单代理**（agent 有 shell，自己起局自己玩，本仓库最常见） | 你（选手） | 你在开始前自记（进程启动或 `--t0` 传入） | 你跑 `score_run.py --no-record` + `judge_pack.py`；评委后由你手动 `finalize.py` | 只读 §1（选手）；仅维护仓库时读 §3 |
-| **B. 双代理**（一个进程当运行器，另一个模型只回 JSON） | 运行器 | 运行器 | 运行器 | §1 或 §2 |
-| **C. 官方运行器**（模型只有 API，没有 shell） | 运行器 | 运行器 | 运行器 | §1 |
+| **A. 单代理**（agent 有 shell，自己起局自己玩，本仓库最常见） | 你（选手） | 你在开始前自记（进程启动或 `--t0` 传入） | 选手收尾只跑 `judge_pack.py`；评委后由汇总侧运行 `finalize.py` 统一核验客观分并合成出榜 | 只读 §1（选手）；仅维护仓库时读 §3 |
+| **B. 双代理**（一个进程当运行器，另一个模型只回 JSON） | 运行器 | 运行器 | 运行器 / 汇总侧 | §1 或 §2 |
+| **C. 官方运行器**（模型只有 API，没有 shell） | 运行器 | 运行器 | 运行器 / 汇总侧 | §1 |
 
 **单代理形态的硬约束（缺一即成绩无效）**：
 
 1. **种子不在你手里**：由评测环境提供；你只拿到"第几个种子"或一个数字，事后核对承诺。
 2. **`t0` 由你在开始工作前记录**：可以直接传 `--t0`，也可以让驱动在进程启动时自动记录；两者都是有效的 B2 起点。
-3. **最终出榜在评委完成后手动做**：本单次模式允许你运行 `score_run.py --no-record` 和 `judge_pack.py`；`finalize.py`、`leaderboard/scores.md` 和最终裁决等评委提交后再手动运行。
+3. **选手严禁碰官方得分，最终出榜在评委完成后统一执行**：选手跑完仅允许运行 `judge_pack.py` 打包脱敏事实卡；客观分定稿与总榜合成统一在评委提交后由汇总侧运行 `finalize.py` 完成。
 
 > 本单次模式没有额外协调角色：选手先做，评委后做，最后手动运行汇总脚本。
 
@@ -66,13 +66,13 @@ node tools/session.mjs stop  --session deepseek-v4-s1
 
 - 第 2、3 局同样起，换成 `-s2 / -s3` 和 `--seed-index 2 / 3`；**引擎状态可并行，但正式成绩不要并行**。B2 是端到端墙钟，同模型/同账号并行会把排队时间算进先开跑的局；正式三局请串行跑，跑前至少用 `python tools/timing_audit.py runs --strict` 确认没有重叠。
 - 每次 `act` 返回新观察 + `advanced`（本次推进多少分钟）。返回 `ended: true` 就是 14:00 收工了。
-- **跑完 3 局后按下方「执行者收尾」运行官方评分和匿名打包脚本**；不要运行 `finalize.py` 或写排行榜。
+- **跑完 3 局后按下方「执行者收尾」生成匿名盲评包**；严禁运行 `score_run.py`、`finalize.py` 或写任何得分与排行榜。
 
 - **正式玩法只允许逐轮手动操作，禁止使用 `play.mjs --policy` / `harness --policy` 或任何策略脚本一次跑完。** 这两个入口仅供开发调试，其产物不能作为正式成绩。
 
 ### 跑完三局后：执行者收尾（本模式）
 
-本单次模式要求执行者自己完成官方脚本评分和匿名打包，不要求跨批次复用：
+跑完三局冻结交付物（`protocol.json`、`result.json`、`trace.jsonl`）后，执行者只做以下收尾（严禁计算或生成官方得分）：
 
 0. **每局结束后记录 token 消耗（自报）**：把宿主/agent 累计的 token 用量写入 `runs/<名>-sX/token_usage.json`：
 
@@ -82,7 +82,7 @@ node tools/session.mjs stop  --session deepseek-v4-s1
 
    宿主拿不到用量就把数值写 `null` 并在 `note` 里说明原因。该数据只作成本诊断，**不参与 A/B/C/D 评分**；可信度与自报 `t0` 同级，不得虚报。
 
-1. **A/B/C 与事实卡不需要手动跑**：`judge_pack.py` 会对缺卡的 run 自动补算，`finalize.py` 出榜时会带种子统一重算并核对承诺（`score_run.py --no-record` 仍可用于开发自检）。
+1. **严禁手动跑客观评分**：客观分（A/B/C）由汇总出榜脚本在评委完成后统一核验定稿并记录防篡改指纹；`judge_pack.py` 会直接从冻结交付物提取纯脱敏事实卡，不生成 `评分.json`。
 
 2. 生成匿名盲评包：
 
@@ -95,9 +95,9 @@ python src/scoring/judge_pack.py --model <名>
 - `leaderboard/blind/<pack_id>/`：交给评委的唯一路径；
 - `leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`：私有映射，不交给评委。
 
-3. 把 `leaderboard/blind/<pack_id>/` 路径交给评委；**不要**把 `blind-map.json`、`reviews.jsonl`、`runs/` 或 A/B/C 交给评委。
+3. 把 `leaderboard/blind/<pack_id>/` 路径交给评委；**不要**把 `blind-map.json`、`reviews.jsonl`、`runs/` 或任何分数交给评委。
 
-4. 执行者不要运行 `finalize.py`，不要写 `leaderboard/scores.md`；评委提交后由你手动运行汇总脚本出榜。
+4. 执行者不得运行 `score_run.py` 或 `finalize.py`，不得写 `leaderboard/scores.md`。
 
 你在一场 480 分钟（06:00–14:00）的外卖班次里跑单，核心目标是**尽可能多赚班次净利，同时像一名专业老骑手一样高质量跑完这一班**：接下的单尽量准时送到、收班前别把单烂在手里，路线规划顺畅少绕冤枉路，工具调用干脆准确（避免报错试错或无意义的重复查询），并且动作利落别拖延耗时。
 
@@ -144,26 +144,26 @@ python src/scoring/judge_pack.py --model <名>
 
 ### 标准流程（评委与手动汇总）
 
-执行者怎么玩见 §1（只能逐轮手动玩；禁止 policy/脚本代打）。评委只评分；汇总脚本在评委提交后手动运行。
-
-> 本单次执行者收尾模式下，步骤 1（`score_run.py`）和步骤 2（`judge_pack.py`）可由执行者自己运行；评委提交后由你手动运行 `finalize.py` 出榜。
+执行者怎么玩见 §1（只能逐轮手动玩；禁止 policy/脚本代打；严禁生成官方得分）。评委负责盲评；汇总脚本在评委提交或重评后运行，负责统一核验客观分并实时合成总榜。
 
 ```sh
-# 1) 评分（每个种子跑一次；核对承诺 + 写事实卡；执行者自跑请加 --no-record）
-python src/scoring/score_run.py runs/<名>-s1 <名> --seed-index 1
-
-# 2) 生成匿名盲评包：输出一个 leaderboard/blind/<pack_id>/ 目录
+# 1) 生成匿名盲评包（直接从冻结交付物提取脱敏事实卡，不写客观分）：输出 leaderboard/blind/<pack_id>/
 python src/scoring/judge_pack.py --model <名>
 #    → 只把这个目录路径交给评委；不要让评委看到仓库、模型名、A/B/C 或私有映射
-#    → 评委用 judge_submit.py 按 case 提交；评分追加到中心日志
+#    → 评委用 judge_submit.py 按 case 提交（支持同一评委随时重评，追加留档并自动取最新一条生效）
 #    → 评委不得查看 leaderboard/reviews.jsonl 或其他评委评分
 
-# 3) 出榜：按规范模型 ID 自动发现所有 blind-map 和 run，合并多个三轮
-#    不填 --runs / --blind-map 时，会按 --model 自动发现
+# 2) 一键全量汇总出榜（推荐）：
+#    - 客观分防篡改缓存：校验评分配置/脚本整体哈希与单局交付物快照哈希（加种子防伪摘要）；未变动则直接复用已定稿客观分，仅对新增或变动局运行客观评测与回放探针
+#    - 盲评分实时生效：绝不缓存盲评结果，每次实时重新读取 leaderboard/reviews.jsonl 合成总分并按多局算术平均数更新排行榜
+python leaderboard/finalize.py
+# 需要强制忽略缓存、全量重算所有局客观分与回放核验时：
+python leaderboard/finalize.py --recompute
+
+# 也可只针对单个规范模型更新并刷新总榜（部分 run 尚无盲评时可加 --allow-partial）：
 python src/scoring/finalize.py --model <名> \
     --review-log leaderboard/reviews.jsonl \
     --d-aggregate mean --min-judges 1
-# 部分 run 尚未评分时，可加 --allow-partial，只汇总已评分 run
 ```
 
 需要先查看合并结果：`python src/scoring/review_merge.py --log leaderboard/reviews.jsonl --out leaderboard/reviews.merged.json --aggregate mean`。
@@ -229,22 +229,23 @@ python src/scoring/finalize.py --model <名> \
 - 必须写"最强反证"；提交用 `judge_submit.py`，每次一个 case，追加到中心日志。
 - 常见扣分证据：死单 / 收班在途 / 超时滞留 / 状态错误 / 电量停摆 / 大幅绕路 / 低分位接单集中在后半班。
 
-### 4.1 中心化追加评审
+### 4.1 中心化追加评审与随时重评
 
 - 所有评分只通过 `judge_submit.py` 追加到 `leaderboard/reviews.jsonl`，不得手改历史行。
+- **支持随时重评且实时生效**：同一评委如需更正或重评某 case，保持同一 `--judge-id` 再次运行 `judge_submit.py` 即可追加新记录；盲评结果绝不缓存，每次运行 `finalize.py` 均实时重新读取日志并按 `(pack_id, case_id, judge_id)` 采用最新一条合成总分，无需等待客观探针重跑。
 - `judge_submit.py` 只校验并追加，不显示其他评委的评分；盲评包 README/RUBRIC/SUBMIT 都明确要求评委不要查看中心日志。
 - 评委人数不固定，可以分批到位；后到评委不得查看先到评委的评分。
-- 汇总时用 `review_merge.py` 查看聚合，或用 `finalize.py --review-log ... --d-aggregate mean|median` 直接出榜。
+- 汇总时用 `review_merge.py` 查看聚合，或用 `leaderboard/finalize.py`（底层调用 `src/scoring/finalize.py`）直接合成出榜。
 - 评委模型的评分、时间、pack/case 和 D1/D2/D3 都会写入中心日志，便于审计和后续重算。
 
 
-### 4.2 同一模型多个三轮
+### 4.2 同一模型多局明细与算术平均排名
 
-- 每跑一个三轮批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`。
+- 每跑一个批次，`judge_pack.py` 生成一个独立盲评包和私有映射：`leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json`。
 - 汇总按**规范模型 ID**：末尾批次后缀（如 `-h1` / `-s1`）会归并，`（Max）` 等推理强度标记保留；无法自动识别时用 `--model-id` 显式指定。
-- `finalize.py` 自动发现该规范模型 ID 的所有映射和对应 run，按 run 合并计算均值；也可以用 `--runs` / `--blind-map` 显式指定。
+- `finalize.py` 自动发现该规范模型 ID 的所有映射和对应 run，**出榜时完整保留每一局的详细明细，并在总榜严格按多局总分的算术平均数排名**；也可以用 `--runs` / `--blind-map` 显式指定。
 - 默认要求所有自动发现的 run 都有 D 评分；加 `--allow-partial` 可只汇总已有评分的 run。
-- `leaderboard/verdicts/<规范模型ID>.json` 的 `summary` 会记录：`runs_total`（总 run 数）、`runs_scored`（已评分 run 数）、`judge_reviews`（评委提交条数）、`rounds_total`（所有 run 的模拟轮次总和）。
+- `leaderboard/verdicts/<规范模型ID>.json` 的 `summary` 会记录：`runs_total`（总 run 数）、`runs_scored`（已评分 run 数）、`judge_reviews`（评委提交条数）、`rounds_total`（所有 run 的模拟轮次总和）、`objective_cache_hits`（客观分缓存复用局数）、`objective_recomputed`（客观分重算局数）。
 **历史批次记录（旧槽位流程，仅留档）**：
 
 - 2026-11-04 `glm-5.3-flash` / `deepseek-v4.1-flash` 各 3 种子批次：**评委 1（槽位 0）** 已由执行代理完成，
@@ -261,16 +262,17 @@ python src/scoring/finalize.py --model <名> \
 | `configs/benchmark.json` | 开发者 | 驱动、指标 |
 | `src/client/rider_client.mjs` | 开发者 | 选手域（起局） |
 | `src/scoring/*.py` | 开发者 | 评分/汇总 |
-| `runs/<名>/{trace,result,protocol}` | 驱动 | 评分/汇总、回放核验 |
-| `runs/<名>/{factcard,评分}` | 评分脚本 | 评审、评分/汇总 |
+| `runs/<名>/{trace,result,protocol}` | 驱动 | 盲评打包、官方客观评分、回放核验（冻结交付物） |
+| `runs/<名>/factcard.md` | `judge_pack.py` / `score_run.py` | 盲评脱敏源 |
+| `runs/<名>/评分.json` | 官方 `score_run.py` / `finalize.py`（选手严禁生成或修改） | 汇总侧防篡改客观分缓存（含 `scoring_hash` 与 `deliverables_hash`） |
 | `runs/<名>/token_usage.json` | 选手自报 | 汇总/成本诊断（不参与评分） |
 | `draft/` | 选手/评委（临时辅助文件） | 仅写入者本人；用完必须删除，收工时应为空或不存在 |
-| `leaderboard/scores.md` | 评分脚本（评分/汇总） | 所有人 |
+| `leaderboard/scores.md` | `finalize.py`（唯一写入入口） | 所有人 |
 | `seeds.json`（仓库外） | 评测环境 | **任何人都不该在选手可达目录** |
 | `leaderboard/blind/<pack_id>/` | `judge_pack.py` | 评委（只给这个目录路径） |
 | `leaderboard/blind-maps/<规范模型ID>.<pack_id>.blind-map.json` | `judge_pack.py` | 运行 finalize 的人 / `finalize.py`，**评委不可见** |
-| `leaderboard/reviews.jsonl` | `judge_submit.py` | 运行汇总的人 / `review_merge.py` / `finalize.py`，**评委不可读** |
-| `src/scoring/judge_submit.py` | 开发者 | 评委提交入口（只追加、不回显他人分数） |
+| `leaderboard/reviews.jsonl` | `judge_submit.py` | 运行汇总的人 / `review_merge.py` / `finalize.py`（实时读取，不缓存），**评委不可读** |
+| `src/scoring/judge_submit.py` | 开发者 | 评委提交/重评入口（只追加、不回显他人分数） |
 | `src/scoring/review_merge.py` | 开发者 | 汇总中心日志 |
 
 ## 6. 命令速查
@@ -278,12 +280,13 @@ python src/scoring/finalize.py --model <名> \
 ```sh
 node tools/gen_seeds.mjs --n 3 --out seeds.json                 # 预注册种子（评测环境）
 pwsh scripts/run_session.ps1 -Model Demo -Seed <种子> -T0 <ISO>  # 起一班（t0 由选手开始前自记）
-python src/scoring/score_run.py runs/Demo Demo --seed <种子>      # 评分（执行者自跑）
-python src/scoring/judge_pack.py --model Demo                # 生成匿名盲评包
-python src/scoring/judge_submit.py --pack-dir <包目录> ...    # 评委追加评分（中心日志）
+python src/scoring/judge_pack.py --model Demo                   # 生成匿名盲评包（不写客观分）
+python src/scoring/judge_submit.py --pack-dir <包目录> ...       # 评委追加/重评打分（中心日志）
 python src/scoring/review_merge.py --log leaderboard/reviews.jsonl --aggregate mean  # 汇总查看
-python leaderboard/finalize.py                                   # 一键全量出榜（覆盖生成 scores.md + verdicts）
-python src/scoring/aggregate.py --prefix runs/Demo               # 多种子汇总
+python leaderboard/finalize.py                                  # 一键全量出榜（复用客观分防篡改缓存 + 实时合成盲评）
+python leaderboard/finalize.py --recompute                      # 强制全量重算客观分与引擎回放核验后出榜
+python src/scoring/score_run.py runs/Demo Demo --seed <种子>     # 单局官方客观评分定稿（仅评测/汇总侧可用）
+python src/scoring/aggregate.py --prefix runs/Demo              # 多种子客观分汇总查看
 node tools/bounds.mjs --seed <种子>                              # 锚值标定
 node tools/verify_replay.mjs runs/<名> --seed <种子>              # 回放核验（结算须逐字段一致）
 pwsh tests/smoke.ps1                                            # 自检（提交前必跑）

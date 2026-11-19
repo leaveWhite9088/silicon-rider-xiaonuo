@@ -52,21 +52,21 @@
 ## 标准跑法与出榜流程
 
 ```sh
-# 1) 选手逐轮打比赛（禁止任何策略脚本代打，正式成绩三局须串行跑）
+# 1) 选手逐轮打比赛（禁止任何策略脚本代打，严禁生成官方得分；正式成绩三局须串行跑）
 node tools/session.mjs start --model Demo-s1 --seed-index 1
 node tools/session.mjs act --session Demo-s1 '{"toolName":"move_to","parameters":{"targetLocationId":"node_22"}}'
 node tools/session.mjs state --session Demo-s1
 node tools/session.mjs stop  --session Demo-s1
 
-# 2) 三局跑完后生成匿名盲评包（缺事实卡时会自动补算）
+# 2) 三局跑完后生成匿名盲评包（仅从冻结交付物提取脱敏事实卡，不生成客观分）
 python src/scoring/judge_pack.py --model Demo
 
-# 3) 评委盲评提交（只看 leaderboard/blind/<pack_id>/，评分追加到中心日志）
+# 3) 评委盲评提交或随时重评（只看 leaderboard/blind/<pack_id>/，追加写入独立中心日志）
 python src/scoring/judge_submit.py --pack-dir leaderboard/blind/<pack_id> --case-id case-01 \
   --judge-id <评委ID> --judge-model <评委模型> \
   --D1 8 --D2 7 --D3 6 --evidence "[E01] [F02]" --note "最强反证"
 
-# 4) 一键汇总出榜（自动重算 A/B/C、核对种子哈希、逐帧回放核验，并更新排行榜）
+# 4) 一键汇总出榜（自动校验/复用客观分防篡改双指纹缓存 + 实时读取最新盲评合成总榜；加 --recompute 可强制全量重算）
 python leaderboard/finalize.py
 ```
 

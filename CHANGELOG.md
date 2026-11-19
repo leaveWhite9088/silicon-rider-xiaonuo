@@ -4,6 +4,11 @@
 
 评分平滑 + 行驶速度 ×2（**与 v1.4 及更早成绩不可混排**：B/C 计分、B 封顶、行驶速度、时限、锚值都变了；旧种子已被 v1.4 的 5 个模型用过，新批次需重新生成种子）。
 
+- **盲评与汇总出榜管线升级（2026-11-19，计分公式与锚值不变）**：
+  - **客观分与盲评分物理分离、独立校验**：选手阶段严禁运行 `score_run.py` 或生成/篡改官方得分；`judge_pack.py` 改为直接从冻结交付物提取纯脱敏事实卡，不再调用 `score_run.py` 生成 `评分.json`；`score_run.py` 移除直接追加 `scores.md` 及 `D_judged` 占位字段，总榜仅由 `finalize.py` 唯一合成。
+  - **客观评分双指纹防篡改缓存**（新增 `src/scoring/objective_cache.py`）：官方客观评分完成种子核验与原引擎回放核验定稿后，在 `评分.json` 中记录评分配置与评分/回放脚本整体哈希（`scoring_hash`）、单局冻结交付物快照哈希（`deliverables_hash`）及绑定种子的防伪摘要（`attestation`）。`finalize.py` 汇总时先核对指纹与摘要，均未变化时直接复用已定稿客观分，仅对新增或变动局重跑客观评测与回放探针；新增 `--recompute`（别名 `--force-recompute`）开关支持强制全量重算。
+  - **盲评随时重评且实时生效**：盲评结果绝不缓存；`judge_submit.py` 默认允许同一评委（相同 `--judge-id`）随时追加重评记录，`review_log.dedupe_latest` 按精确时间戳与追加顺序取最新一条；每次执行 `finalize.py`（含全量与单模型 `--model` 模式）均实时重读最新盲评日志重新合成总分，保留同一模型每一局详细明细，并按多局算术平均数实时重排刷新总榜。新增 `ObjectiveCacheAndFinalizePipelineTests` 全链路测试。
+
 - **行驶速度 ×2**（新增 `src/client/movement_tuning.mjs`，`configs/benchmark.json → movement.speed_multiplier`，当前 2）：不改 `src/engine/`，运行时包装 `CongestionManager.congestionToSpeed`，move_to / estimate_time / 越线预判同步变快；`search_nearby_battery_stations` 的 estimatedTime 在引擎里写死，由客户端同比例换算；`help` 文本（`src/engine/client/system-prompt.js`，唯一允许改的引擎侧文件，仅文本）按 `sim.rulesInfo` 显示实际速度与时限公式。推行速度、取货 / 送货 / 换电耗时、电耗不变。`protocol.json` 新增 `movement`，`verify_replay.mjs` 按它重放（缺省 = 1，兼容旧运行）。目的：每局完成单数由约 16 提高到 20+，降低结果的离散噪声。
 - **观察与事实卡口径补齐**：06:00–07:00 早间 +1 元补贴同步显示在骑手实时观察的待接订单与在途订单中，并计入事实卡接单费用统计；事实卡“单位时间收入”随车速倍率动态换算（2 倍速下由 `fee/(2d+3)` 更新为 `fee/(d+3)`）；事实卡超时滞留统计补算交货动作的 1 分钟耗时，与引擎结算对齐；选手说明补充职业履约要求并明令禁止选手翻阅评分细则与底层代码。
 - **上限工具与模型归并修正**：`tools/bounds.mjs` 的现实路由界 1.5km 接驾耗时按车速倍率动态换算，并计入 06:00–07:00 早间 +1 元补贴；`model_identity` 统一按小写归一化规范模型 ID，避免 Windows 下同模型不同大小写拆行或覆盖裁决文件。
