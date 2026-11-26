@@ -3,7 +3,7 @@
  "model_inputs": [
   "glm-5.3-flash"
  ],
- "finalized_at": "2026-11-19T10:17:55",
+ "finalized_at": "2026-11-24T12:10:09",
  "scoring_hash": "3e83b8e56855700ea7b7c9800c44776881578f9c29b3f92164831fa475050599",
  "blind_pack_id": "c8db79cf8ee5",
  "blind_pack_ids": [
